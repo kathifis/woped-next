@@ -1,8 +1,10 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useTokenGameStore } from '@/stores/tokenGame'
 
+const { t } = useI18n()
 const tokenGameStore = useTokenGameStore()
 const {
   status,
@@ -23,17 +25,22 @@ const {
 // Local delay value for slider
 const localDelay = ref(autoPlayDelay.value)
 
-// Sync delay with store
+// Sync delay: local -> store
 watch(localDelay, (val) => {
   tokenGameStore.setAutoPlayDelay(val)
 })
 
+// Sync delay: store -> local (when game starts or settings change)
+watch(autoPlayDelay, (val) => {
+  localDelay.value = val
+})
+
 // Conflict resolution options
-const conflictOptions = [
-  { id: 'manual', label: 'Manual' },
-  { id: 'random', label: 'Random' },
-  { id: 'first', label: 'First' },
-]
+const conflictOptions = computed(() => [
+  { id: 'manual', label: t('tokenGame.manual') },
+  { id: 'random', label: t('tokenGame.random') },
+  { id: 'first', label: t('tokenGame.first') },
+])
 
 // Button handlers
 const handleStart = () => {
@@ -86,10 +93,10 @@ const setConflictResolution = (mode) => {
 
 // Status display
 const statusText = computed(() => {
-  if (isDeadlock.value) return 'Deadlock!'
-  if (isPlaying.value) return 'Playing...'
-  if (isPaused.value) return 'Paused'
-  return 'Stopped'
+  if (isDeadlock.value) return t('tokenGame.deadlock')
+  if (isPlaying.value) return t('tokenGame.playing')
+  if (isPaused.value) return t('tokenGame.paused')
+  return t('tokenGame.stopped')
 })
 
 const statusClass = computed(() => {
@@ -103,7 +110,7 @@ const statusClass = computed(() => {
 <template>
   <div class="token-game-controls">
     <div class="controls-header">
-      <span class="title">Token Game</span>
+      <span class="title">{{ $t('tokenGame.title') }}</span>
       <span :class="['status', statusClass]">{{ statusText }}</span>
     </div>
 
@@ -114,17 +121,17 @@ const statusClass = computed(() => {
         v-if="!isRunning"
         class="control-btn primary"
         @click="handleStart"
-        title="Start Token Game"
+        :title="$t('tokenGame.start')"
       >
-        ▶ Start
+        ▶ {{ $t('tokenGame.start') }}
       </button>
       <button
         v-else
         class="control-btn danger"
         @click="handleStop"
-        title="Stop Token Game"
+        :title="$t('tokenGame.stop')"
       >
-        ■ Stop
+        ■ {{ $t('tokenGame.stop') }}
       </button>
 
       <!-- Play/Pause Controls (only when running) -->
@@ -151,7 +158,7 @@ const statusClass = computed(() => {
             class="control-btn"
             :disabled="enabledTransitions.length === 0 || isAnimating"
             @click="handlePlay"
-            title="Auto Play"
+            :title="$t('tokenGame.play')"
           >
             ▶
           </button>
@@ -159,7 +166,7 @@ const statusClass = computed(() => {
             v-else
             class="control-btn"
             @click="handlePause"
-            title="Pause"
+            :title="$t('tokenGame.pause')"
           >
             ⏸
           </button>
@@ -167,7 +174,7 @@ const statusClass = computed(() => {
             class="control-btn small"
             :disabled="enabledTransitions.length === 0 || isAnimating"
             @click="handleStepForward"
-            title="Fire Next Transition"
+            :title="$t('tokenGame.step')"
           >
             ▶
           </button>
@@ -185,19 +192,19 @@ const statusClass = computed(() => {
 
     <!-- History Display -->
     <div v-if="isRunning" class="history-info">
-      <span>Step {{ currentStep }} / {{ totalSteps }}</span>
+      <span>{{ $t('tokenGame.step') }} {{ currentStep }} / {{ totalSteps }}</span>
       <button
         class="control-btn text"
         @click="handleReset"
-        title="Reset to Initial Marking"
+        :title="$t('tokenGame.reset')"
       >
-        ↺ Reset
+        ↺ {{ $t('tokenGame.reset') }}
       </button>
     </div>
 
     <!-- Enabled Transitions -->
     <div v-if="isRunning && enabledTransitions.length > 0" class="enabled-info">
-      <div class="label">Enabled ({{ enabledTransitions.length }}):</div>
+      <div class="label">{{ $t('tokenGame.enabled') }} ({{ enabledTransitions.length }}):</div>
       <div class="enabled-list">
         <span
           v-for="id in enabledTransitions"
@@ -212,7 +219,7 @@ const statusClass = computed(() => {
     <!-- Settings -->
     <div v-if="isRunning" class="settings">
       <div class="setting-row">
-        <label>Speed:</label>
+        <label>{{ $t('tokenGame.speed') }}:</label>
         <input
           type="range"
           v-model.number="localDelay"
@@ -225,7 +232,7 @@ const statusClass = computed(() => {
       </div>
 
       <div class="setting-row">
-        <label>Conflicts:</label>
+        <label>{{ $t('tokenGame.conflicts') }}:</label>
         <div class="btn-group">
           <button
             v-for="option in conflictOptions"
@@ -242,15 +249,15 @@ const statusClass = computed(() => {
     <!-- Deadlock Warning -->
     <div v-if="isDeadlock" class="deadlock-warning">
       <span class="warning-icon">⚠</span>
-      <span>No transitions enabled - the net is in a deadlock state.</span>
+      <span>{{ $t('tokenGame.deadlockMessage') }}</span>
     </div>
   </div>
 </template>
 
 <style scoped>
 .token-game-controls {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 12px;
   font-size: 13px;
@@ -264,12 +271,12 @@ const statusClass = computed(() => {
   align-items: center;
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .title {
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .status {
@@ -280,8 +287,8 @@ const statusClass = computed(() => {
 }
 
 .status-stopped {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
 }
 
 .status-paused {
@@ -312,17 +319,18 @@ const statusClass = computed(() => {
 
 .control-btn {
   padding: 6px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: white;
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
   cursor: pointer;
   font-size: 12px;
   transition: all 0.15s ease;
 }
 
 .control-btn:hover:not(:disabled) {
-  background: #f3f4f6;
-  border-color: #9ca3af;
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border-light);
 }
 
 .control-btn:disabled {
@@ -331,19 +339,19 @@ const statusClass = computed(() => {
 }
 
 .control-btn.primary {
-  background: #3b82f6;
+  background: var(--color-primary);
   color: white;
-  border-color: #3b82f6;
+  border-color: var(--color-primary);
 }
 
 .control-btn.primary:hover {
-  background: #2563eb;
+  background: var(--color-primary-hover);
 }
 
 .control-btn.danger {
-  background: #ef4444;
+  background: var(--color-error);
   color: white;
-  border-color: #ef4444;
+  border-color: var(--color-error);
 }
 
 .control-btn.danger:hover {
@@ -358,12 +366,12 @@ const statusClass = computed(() => {
 .control-btn.text {
   border: none;
   background: none;
-  color: #3b82f6;
+  color: var(--color-primary);
   padding: 4px 8px;
 }
 
 .control-btn.text:hover {
-  background: #eff6ff;
+  background: var(--color-bg-tertiary);
 }
 
 .history-info {
@@ -371,11 +379,11 @@ const statusClass = computed(() => {
   justify-content: space-between;
   align-items: center;
   padding: 8px;
-  background: #f9fafb;
+  background: var(--color-bg);
   border-radius: 6px;
   margin-bottom: 10px;
   font-size: 12px;
-  color: #4b5563;
+  color: var(--color-text-secondary);
 }
 
 .enabled-info {
@@ -384,7 +392,7 @@ const statusClass = computed(() => {
 
 .enabled-info .label {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-bottom: 4px;
 }
 
@@ -404,7 +412,7 @@ const statusClass = computed(() => {
 }
 
 .settings {
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
   padding-top: 10px;
 }
 
@@ -417,7 +425,7 @@ const statusClass = computed(() => {
 
 .setting-row label {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   min-width: 60px;
 }
 
@@ -428,7 +436,7 @@ const statusClass = computed(() => {
 
 .speed-value {
   font-size: 11px;
-  color: #374151;
+  color: var(--color-text-secondary);
   min-width: 35px;
   text-align: right;
 }
@@ -440,8 +448,9 @@ const statusClass = computed(() => {
 
 .option-btn {
   padding: 4px 8px;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
   font-size: 10px;
   cursor: pointer;
 }
@@ -455,9 +464,9 @@ const statusClass = computed(() => {
 }
 
 .option-btn.active {
-  background: #3b82f6;
+  background: var(--color-primary);
   color: white;
-  border-color: #3b82f6;
+  border-color: var(--color-primary);
 }
 
 .deadlock-warning {

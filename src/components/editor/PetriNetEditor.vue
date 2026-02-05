@@ -20,10 +20,6 @@ const { isRunning: isTokenGameActive } = storeToRefs(tokenGameStore)
 const canvasWidth = ref(800)
 const canvasHeight = ref(600)
 
-// Grid settings
-const showGrid = ref(true)
-const snapToGrid = ref(true)
-
 // Update canvas dimensions when canvas ref is available
 const canvasRef = ref(null)
 
@@ -88,7 +84,6 @@ onMounted(() => {
       <div class="canvas-container">
         <EditorCanvas 
           ref="canvasRef"
-          :show-grid="showGrid"
           @resize="updateCanvasDimensions"
         />
         
@@ -97,8 +92,6 @@ onMounted(() => {
           <ViewToolbar
             :canvas-width="canvasWidth"
             :canvas-height="canvasHeight"
-            @update:show-grid="showGrid = $event"
-            @update:snap-to-grid="snapToGrid = $event"
           />
         </div>
 
@@ -131,7 +124,7 @@ onMounted(() => {
   flex-direction: column;
   width: 100%;
   height: 100vh;
-  background-color: #f9fafb;
+  background-color: var(--color-bg);
 }
 
 .editor-main {

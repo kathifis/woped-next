@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useConfigStore } from '@/stores/config'
 import { VISUAL, OPERATOR_INFO, OperatorType, getOperatorCategory } from '@/types/petri-net'
 
 const props = defineProps({
@@ -30,15 +31,31 @@ const emit = defineEmits(['click', 'dragend'])
 const { size, strokeWidth } = VISUAL.operator
 const halfSize = size / 2
 
+// Theme colors
+const configStore = useConfigStore()
+
+const themeColors = computed(() => {
+  const dark = configStore.isDarkMode
+  return {
+    fill: dark ? '#1f2937' : '#ffffff',
+    stroke: dark ? '#9ca3af' : '#374151',
+    selectedStroke: '#3b82f6',
+    enabledStroke: '#22c55e',
+    labelFill: dark ? '#e5e7eb' : '#374151',
+    typeLabelFill: dark ? '#9ca3af' : '#6b7280',
+    dividerStroke: dark ? '#6b7280' : '#d1d5db',
+  }
+})
+
 // Get operator info
 const operatorInfo = computed(() => OPERATOR_INFO[props.operator.operatorType])
 const category = computed(() => getOperatorCategory(props.operator.operatorType))
 
 // Colors based on selection and token game state
 const strokeColor = computed(() => {
-  if (props.isSelected) return '#3b82f6'
-  if (props.isEnabled && props.isTokenGameActive) return '#22c55e'
-  return '#1a1a1a'
+  if (props.isSelected) return themeColors.value.selectedStroke
+  if (props.isEnabled && props.isTokenGameActive) return themeColors.value.enabledStroke
+  return themeColors.value.stroke
 })
 const fillColor = computed(() => operatorInfo.value?.color || '#4CAF50')
 const currentStrokeWidth = computed(() => {
@@ -81,7 +98,7 @@ const circleConfig = computed(() => ({
   x: props.operator.position.x,
   y: props.operator.position.y,
   radius: halfSize,
-  fill: 'white',
+  fill: themeColors.value.fill,
   stroke: strokeColor.value,
   strokeWidth: currentStrokeWidth.value,
 }))
@@ -106,7 +123,7 @@ const labelConfig = computed(() => ({
   text: props.operator.name,
   fontSize: 12,
   fontFamily: 'system-ui, sans-serif',
-  fill: '#333',
+  fill: themeColors.value.labelFill,
   align: 'center',
   offsetX: props.operator.name.length * 3,
 }))
@@ -118,7 +135,7 @@ const typeIndicatorConfig = computed(() => ({
   text: operatorInfo.value?.label || '',
   fontSize: 9,
   fontFamily: 'system-ui, sans-serif',
-  fill: '#888',
+  fill: themeColors.value.typeLabelFill,
   align: 'center',
   offsetX: (operatorInfo.value?.label?.length || 0) * 2.5,
 }))
@@ -162,7 +179,7 @@ const handleDragEnd = (e) => {
       <v-line
         :config="{
           points: diamondPoints,
-          fill: 'white',
+          fill: themeColors.fill,
           stroke: strokeColor,
           strokeWidth: currentStrokeWidth,
           closed: true,
@@ -204,7 +221,7 @@ const handleDragEnd = (e) => {
           y: operator.position.y - halfSize - 5,
           width: size + 10,
           height: size + 10,
-          fill: 'white',
+          fill: themeColors.fill,
           stroke: strokeColor,
           strokeWidth: currentStrokeWidth,
           cornerRadius: 5,
@@ -237,7 +254,7 @@ const handleDragEnd = (e) => {
             x: operator.position.x - 12,
             y: operator.position.y,
             radius: 10,
-            fill: 'white',
+            fill: themeColors.fill,
             stroke: '#FF9800',
             strokeWidth: 1.5,
           }"
@@ -262,7 +279,7 @@ const handleDragEnd = (e) => {
       <v-line
         :config="{
           points: [operator.position.x, operator.position.y - halfSize, operator.position.x, operator.position.y + halfSize],
-          stroke: '#ccc',
+          stroke: themeColors.dividerStroke,
           strokeWidth: 1,
           dash: [2, 2],
         }"
@@ -294,7 +311,7 @@ const handleDragEnd = (e) => {
             x: operator.position.x + 12,
             y: operator.position.y,
             radius: 10,
-            fill: 'white',
+            fill: themeColors.fill,
             stroke: '#FF9800',
             strokeWidth: 1.5,
           }"

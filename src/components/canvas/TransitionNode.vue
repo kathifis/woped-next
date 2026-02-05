@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useConfigStore } from '@/stores/config'
 import { VISUAL } from '@/types/petri-net'
 
 const props = defineProps({
@@ -29,17 +30,32 @@ const emit = defineEmits(['click', 'dragend'])
 
 const { width, height, strokeWidth } = VISUAL.transition
 
+// Theme colors
+const configStore = useConfigStore()
+
+const colors = computed(() => {
+  const dark = configStore.isDarkMode
+  return {
+    fill: dark ? '#1f2937' : '#ffffff',
+    stroke: dark ? '#9ca3af' : '#374151',
+    selectedStroke: '#3b82f6',
+    enabledStroke: '#22c55e',
+    enabledFill: dark ? '#166534' : '#dcfce7',
+    labelFill: dark ? '#e5e7eb' : '#374151',
+  }
+})
+
 // Determine stroke color based on state
 const strokeColor = computed(() => {
-  if (props.isSelected) return '#3b82f6'
-  if (props.isEnabled && props.isTokenGameActive) return '#22c55e' // Green for enabled
-  return '#1a1a1a'
+  if (props.isSelected) return colors.value.selectedStroke
+  if (props.isEnabled && props.isTokenGameActive) return colors.value.enabledStroke
+  return colors.value.stroke
 })
 
 // Determine fill color based on state
 const fillColor = computed(() => {
-  if (props.isEnabled && props.isTokenGameActive) return '#dcfce7' // Light green for enabled
-  return 'white'
+  if (props.isEnabled && props.isTokenGameActive) return colors.value.enabledFill
+  return colors.value.fill
 })
 
 // Rectangle config
@@ -67,7 +83,7 @@ const labelConfig = computed(() => ({
   text: props.transition.name,
   fontSize: 12,
   fontFamily: 'system-ui, sans-serif',
-  fill: '#333',
+  fill: colors.value.labelFill,
   align: 'center',
   offsetX: props.transition.name.length * 3,
 }))

@@ -1,9 +1,12 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { usePetriNetStore } from '@/stores/petriNet'
 import { useViewport } from '@/composables/useViewport'
 import { VISUAL } from '@/types/petri-net'
+
+const { t } = useI18n()
 
 const props = defineProps({
   canvasWidth: {
@@ -241,7 +244,7 @@ watch(
 <template>
   <div class="overview-panel">
     <div class="overview-header">
-      <span>Overview</span>
+      <span>{{ $t('overview.title') }}</span>
     </div>
     <canvas
       ref="canvasRef"
@@ -258,8 +261,8 @@ watch(
 
 <style scoped>
 .overview-panel {
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -269,11 +272,11 @@ watch(
   padding: 8px 12px;
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background-color: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .overview-canvas {

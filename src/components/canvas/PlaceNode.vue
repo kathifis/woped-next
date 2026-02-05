@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useConfigStore } from '@/stores/config'
 import { VISUAL } from '@/types/petri-net'
 
 const props = defineProps({
@@ -29,6 +30,20 @@ const emit = defineEmits(['click', 'dragend'])
 
 const { radius, strokeWidth, tokenRadius } = VISUAL.place
 
+// Theme colors
+const configStore = useConfigStore()
+
+const colors = computed(() => {
+  const dark = configStore.isDarkMode
+  return {
+    fill: dark ? '#1f2937' : '#ffffff',
+    stroke: dark ? '#9ca3af' : '#374151',
+    selectedStroke: '#3b82f6',
+    tokenFill: dark ? '#e5e7eb' : '#1f2937',
+    labelFill: dark ? '#e5e7eb' : '#374151',
+  }
+})
+
 // Effective token count (use override if token game is active)
 const effectiveTokens = computed(() => {
   if (props.isTokenGameActive && props.tokenOverride !== null) {
@@ -42,8 +57,8 @@ const circleConfig = computed(() => ({
   x: props.place.position.x,
   y: props.place.position.y,
   radius,
-  fill: 'white',
-  stroke: props.isSelected ? '#3b82f6' : '#1a1a1a',
+  fill: colors.value.fill,
+  stroke: props.isSelected ? colors.value.selectedStroke : colors.value.stroke,
   strokeWidth: props.isSelected ? 3 : strokeWidth,
   draggable: props.draggable,
 }))
@@ -92,7 +107,7 @@ const labelConfig = computed(() => ({
   text: props.place.name,
   fontSize: 12,
   fontFamily: 'system-ui, sans-serif',
-  fill: '#333',
+  fill: colors.value.labelFill,
   align: 'center',
   offsetX: props.place.name.length * 3,
 }))
@@ -105,7 +120,7 @@ const tokenNumberConfig = computed(() => ({
   fontSize: 14,
   fontFamily: 'system-ui, sans-serif',
   fontStyle: 'bold',
-  fill: '#1a1a1a',
+  fill: colors.value.tokenFill,
   align: 'center',
   verticalAlign: 'middle',
   offsetX: effectiveTokens.value >= 10 ? 7 : 4,
@@ -139,7 +154,7 @@ const handleDragEnd = (e) => {
         x: pos.x,
         y: pos.y,
         radius: tokenRadius,
-        fill: '#1a1a1a',
+        fill: colors.tokenFill,
       }"
     />
 

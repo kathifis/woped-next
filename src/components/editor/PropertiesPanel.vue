@@ -1,9 +1,11 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { usePetriNetStore } from '@/stores/petriNet'
 import { OperatorType, OPERATOR_INFO } from '@/types/petri-net'
 
+const { t } = useI18n()
 const store = usePetriNetStore()
 const { selectedIds, net } = storeToRefs(store)
 
@@ -11,11 +13,11 @@ const { selectedIds, net } = storeToRefs(store)
 const operatorTypes = Object.values(OperatorType)
 
 // Routing modes for arc dropdown
-const routingModes = [
-  { id: 'direct', label: 'Direct' },
-  { id: 'orthogonal', label: 'Orthogonal' },
-  { id: 'bezier', label: 'Curved' },
-]
+const routingModes = computed(() => [
+  { id: 'direct', label: t('properties.direct') },
+  { id: 'orthogonal', label: t('properties.orthogonal') },
+  { id: 'bezier', label: t('properties.curved') },
+])
 
 // Get the selected element (only show properties for single selection)
 const selectedElement = computed(() => {
@@ -151,16 +153,16 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
 <template>
   <div class="properties-panel">
     <div class="panel-header">
-      <h3>Properties</h3>
+      <h3>{{ $t('properties.title') }}</h3>
     </div>
 
     <div class="panel-content">
       <!-- No selection: Show net properties -->
       <div v-if="!selectedElement" class="property-section">
-        <h4>Petri Net</h4>
+        <h4>{{ $t('properties.petriNet') }}</h4>
         
         <div class="property-row">
-          <label>Name</label>
+          <label>{{ $t('properties.name') }}</label>
           <input
             v-model="localNetName"
             type="text"
@@ -172,29 +174,29 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
         <div class="stats-grid">
           <div class="stat-item">
             <span class="stat-value">{{ stats.places }}</span>
-            <span class="stat-label">Places</span>
+            <span class="stat-label">{{ $t('properties.places') }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-value">{{ stats.transitions }}</span>
-            <span class="stat-label">Transitions</span>
+            <span class="stat-label">{{ $t('properties.transitions') }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-value">{{ stats.operators }}</span>
-            <span class="stat-label">Operators</span>
+            <span class="stat-label">{{ $t('properties.operators') }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-value">{{ stats.arcs }}</span>
-            <span class="stat-label">Arcs</span>
+            <span class="stat-label">{{ $t('properties.arcs') }}</span>
           </div>
         </div>
       </div>
 
       <!-- Place selected -->
       <div v-else-if="elementType === 'place'" class="property-section">
-        <h4>Place</h4>
+        <h4>{{ $t('properties.place') }}</h4>
 
         <div class="property-row">
-          <label>Name</label>
+          <label>{{ $t('properties.name') }}</label>
           <input
             v-model="localName"
             type="text"
@@ -204,7 +206,7 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
         </div>
 
         <div class="property-row">
-          <label>Tokens</label>
+          <label>{{ $t('properties.tokens') }}</label>
           <input
             v-model.number="localTokens"
             type="number"
@@ -215,25 +217,25 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
         </div>
 
         <div class="property-row">
-          <label>Capacity</label>
+          <label>{{ $t('properties.capacity') }}</label>
           <input
             v-model.number="localCapacity"
             type="number"
             min="-1"
-            placeholder="-1 = unlimited"
+            :placeholder="$t('properties.unlimited')"
             @change="updateCapacity"
             @blur="updateCapacity"
           />
-          <span class="hint">-1 = unlimited</span>
+          <span class="hint">{{ $t('properties.unlimitedHint') }}</span>
         </div>
       </div>
 
       <!-- Transition selected -->
       <div v-else-if="elementType === 'transition'" class="property-section">
-        <h4>Transition</h4>
+        <h4>{{ $t('properties.transition') }}</h4>
 
         <div class="property-row">
-          <label>Name</label>
+          <label>{{ $t('properties.name') }}</label>
           <input
             v-model="localName"
             type="text"
@@ -243,11 +245,11 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
         </div>
 
         <div class="property-row">
-          <label>Label</label>
+          <label>{{ $t('properties.label') }}</label>
           <input
             v-model="localLabel"
             type="text"
-            placeholder="Optional label"
+            :placeholder="$t('properties.optionalLabel')"
             @change="updateLabel"
             @blur="updateLabel"
           />
@@ -256,10 +258,10 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
 
       <!-- Arc selected -->
       <div v-else-if="elementType === 'arc'" class="property-section">
-        <h4>Arc</h4>
+        <h4>{{ $t('properties.arc') }}</h4>
 
         <div class="property-row">
-          <label>Weight</label>
+          <label>{{ $t('properties.weight') }}</label>
           <input
             v-model.number="localWeight"
             type="number"
@@ -270,7 +272,7 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
         </div>
 
         <div class="property-row">
-          <label>Routing</label>
+          <label>{{ $t('properties.routing') }}</label>
           <select
             v-model="localRoutingMode"
             @change="updateRoutingMode"
@@ -288,10 +290,10 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
 
       <!-- Operator selected -->
       <div v-else-if="elementType === 'operator'" class="property-section">
-        <h4>Operator</h4>
+        <h4>{{ $t('operators.title') }}</h4>
 
         <div class="property-row">
-          <label>Name</label>
+          <label>{{ $t('properties.name') }}</label>
           <input
             v-model="localName"
             type="text"
@@ -301,7 +303,7 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
         </div>
 
         <div class="property-row">
-          <label>Operator Type</label>
+          <label>{{ $t('operators.type') }}</label>
           <select
             v-model="localOperatorType"
             @change="updateOperatorType"
@@ -319,7 +321,7 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
 
       <!-- Multiple selection -->
       <div v-else class="property-section">
-        <p class="multi-hint">{{ selectedIds.length }} elements selected</p>
+        <p class="multi-hint">{{ $t('properties.elementsSelected', { count: selectedIds.length }) }}</p>
       </div>
     </div>
 
@@ -329,7 +331,7 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
         class="delete-btn"
         @click="store.deleteSelected()"
       >
-        Delete
+        {{ $t('toolbar.delete') }}
       </button>
     </div>
   </div>
@@ -338,22 +340,22 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
 <style scoped>
 .properties-panel {
   width: 280px;
-  background-color: #ffffff;
-  border-left: 1px solid #e5e7eb;
+  background-color: var(--color-bg-secondary);
+  border-left: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
 }
 
 .panel-header {
   padding: 16px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .panel-header h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .panel-content {
@@ -366,7 +368,7 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
   margin: 0 0 16px 0;
   font-size: 13px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -380,35 +382,35 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
   margin-bottom: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-secondary);
 }
 
 .property-row input {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   font-size: 14px;
-  color: #111827;
-  background-color: #ffffff;
+  color: var(--color-text);
+  background-color: var(--color-bg-secondary);
   box-sizing: border-box;
 }
 
 .property-row input:focus,
 .property-row select:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .property-row select {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   font-size: 14px;
-  color: #111827;
-  background-color: #ffffff;
+  color: var(--color-text);
+  background-color: var(--color-bg-secondary);
   box-sizing: border-box;
   cursor: pointer;
 }
@@ -417,7 +419,7 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
   display: block;
   margin-top: 4px;
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 
 .stats-grid {
@@ -430,7 +432,7 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
 .stat-item {
   text-align: center;
   padding: 12px 8px;
-  background-color: #f9fafb;
+  background-color: var(--color-bg);
   border-radius: 8px;
 }
 
@@ -438,18 +440,18 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
   display: block;
   font-size: 20px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .stat-label {
   display: block;
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-top: 4px;
 }
 
 .multi-hint {
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-size: 13px;
   text-align: center;
   padding: 20px 0;
@@ -457,13 +459,13 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
 
 .panel-actions {
   padding: 16px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
 }
 
 .delete-btn {
   width: 100%;
   padding: 10px 16px;
-  background-color: #ef4444;
+  background-color: var(--color-error);
   color: #ffffff;
   border: none;
   border-radius: 6px;

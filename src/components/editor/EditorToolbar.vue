@@ -1,12 +1,14 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { usePetriNetStore } from '@/stores/petriNet'
 import { useConfigStore } from '@/stores/config'
 import { OperatorType, OPERATOR_INFO } from '@/types/petri-net'
 import FileMenu from '@/components/file/FileMenu.vue'
 import SettingsDialog from '@/components/settings/SettingsDialog.vue'
 
+const { t } = useI18n()
 const store = usePetriNetStore()
 const configStore = useConfigStore()
 const { tool, canUndo, canRedo, viewport, selectedOperatorType } = storeToRefs(store)
@@ -18,26 +20,26 @@ const showSettings = ref(false)
 const showOperatorMenu = ref(false)
 
 // Tool definitions
-const tools = [
-  { id: 'select', label: 'Select', shortcut: 'V', icon: '↖' },
-  { id: 'place', label: 'Place', shortcut: 'P', icon: '○' },
-  { id: 'transition', label: 'Transition', shortcut: 'T', icon: '□' },
-  { id: 'operator', label: 'Operator', shortcut: 'O', icon: '◇', hasDropdown: true },
-  { id: 'arc', label: 'Arc', shortcut: 'A', icon: '→' },
-  { id: 'delete', label: 'Delete', shortcut: 'D', icon: '✕' },
-]
+const tools = computed(() => [
+  { id: 'select', label: t('toolbar.select'), shortcut: 'V', icon: '↖' },
+  { id: 'place', label: t('toolbar.place'), shortcut: 'P', icon: '○' },
+  { id: 'transition', label: t('toolbar.transition'), shortcut: 'T', icon: '□' },
+  { id: 'operator', label: t('operators.title'), shortcut: 'O', icon: '◇', hasDropdown: true },
+  { id: 'arc', label: t('toolbar.arc'), shortcut: 'A', icon: '→' },
+  { id: 'delete', label: t('toolbar.delete'), shortcut: 'D', icon: '✕' },
+])
 
 // Operator types for dropdown
-const operatorTypes = [
-  { type: OperatorType.AND_SPLIT, label: 'AND-Split', icon: '◇→' },
-  { type: OperatorType.AND_JOIN, label: 'AND-Join', icon: '→◇' },
-  { type: OperatorType.XOR_SPLIT, label: 'XOR-Split', icon: '⊗→' },
-  { type: OperatorType.XOR_JOIN, label: 'XOR-Join', icon: '→⊗' },
+const operatorTypes = computed(() => [
+  { type: OperatorType.AND_SPLIT, label: t('operators.andSplit'), icon: '◇→' },
+  { type: OperatorType.AND_JOIN, label: t('operators.andJoin'), icon: '→◇' },
+  { type: OperatorType.XOR_SPLIT, label: t('operators.xorSplit'), icon: '⊗→' },
+  { type: OperatorType.XOR_JOIN, label: t('operators.xorJoin'), icon: '→⊗' },
   { type: OperatorType.AND_SPLIT_JOIN, label: 'AND-Split-Join', icon: '◇◇' },
   { type: OperatorType.XOR_SPLIT_JOIN, label: 'XOR-Split-Join', icon: '⊗⊗' },
   { type: OperatorType.AND_JOIN_XOR_SPLIT, label: 'AND-Join/XOR-Split', icon: '◇⊗' },
   { type: OperatorType.XOR_JOIN_AND_SPLIT, label: 'XOR-Join/AND-Split', icon: '⊗◇' },
-]
+])
 
 // Get current operator info
 const currentOperatorInfo = () => OPERATOR_INFO[selectedOperatorType.value]
@@ -178,7 +180,7 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
 
           <!-- Dropdown menu -->
           <div v-if="showOperatorMenu" class="operator-menu">
-            <div class="operator-menu-header">Select Operator Type</div>
+            <div class="operator-menu-header">{{ $t('operators.selectType') }}</div>
             <button
               v-for="op in operatorTypes"
               :key="op.type"
@@ -201,20 +203,20 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
       <button
         class="tool-btn"
         :disabled="!canUndo"
-        title="Undo (Ctrl+Z)"
+        :title="$t('toolbar.undo') + ' (Ctrl+Z)'"
         @click="store.undo()"
       >
         <span class="tool-icon">↩</span>
-        <span class="tool-label">Undo</span>
+        <span class="tool-label">{{ $t('toolbar.undo') }}</span>
       </button>
       <button
         class="tool-btn"
         :disabled="!canRedo"
-        title="Redo (Ctrl+Y)"
+        :title="$t('toolbar.redo') + ' (Ctrl+Y)'"
         @click="store.redo()"
       >
         <span class="tool-icon">↪</span>
-        <span class="tool-label">Redo</span>
+        <span class="tool-label">{{ $t('toolbar.redo') }}</span>
       </button>
     </div>
 
@@ -225,7 +227,7 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
     <div class="toolbar-group">
       <button
         class="tool-btn"
-        title="Zoom Out"
+        :title="$t('toolbar.zoomOut')"
         @click="store.zoomOut()"
       >
         <span class="tool-icon">−</span>
@@ -233,14 +235,14 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
       <span class="zoom-display">{{ zoomPercent() }}%</span>
       <button
         class="tool-btn"
-        title="Zoom In"
+        :title="$t('toolbar.zoomIn')"
         @click="store.zoomIn()"
       >
         <span class="tool-icon">+</span>
       </button>
       <button
         class="tool-btn"
-        title="Reset Zoom"
+        :title="$t('toolbar.zoomReset')"
         @click="store.resetZoom()"
       >
         <span class="tool-icon">⟲</span>
@@ -258,7 +260,7 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
     <!-- Settings button -->
     <button
       class="tool-btn settings-btn"
-      title="Settings"
+      :title="$t('settings.title')"
       @click="showSettings = true"
     >
       <span class="tool-icon">⚙</span>
@@ -274,8 +276,8 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
   display: flex;
   align-items: center;
   padding: 8px 16px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  background-color: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
   gap: 8px;
 }
 
@@ -290,23 +292,23 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background-color: #ffffff;
-  color: #374151;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .tool-btn:hover:not(:disabled) {
-  background-color: #f3f4f6;
-  border-color: #d1d5db;
+  background-color: var(--color-bg-tertiary);
+  border-color: var(--color-border-light);
 }
 
 .tool-btn.active {
-  background-color: #3b82f6;
-  border-color: #3b82f6;
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
   color: #ffffff;
 }
 
@@ -339,8 +341,8 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
   top: 100%;
   left: 0;
   margin-top: 4px;
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 100;
@@ -352,11 +354,11 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
   padding: 8px 12px;
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background-color: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .operator-option {
@@ -367,7 +369,7 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
   padding: 10px 12px;
   border: none;
   background-color: transparent;
-  color: #374151;
+  color: var(--color-text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: background-color 0.1s ease;
@@ -375,12 +377,12 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
 }
 
 .operator-option:hover {
-  background-color: #f3f4f6;
+  background-color: var(--color-bg-tertiary);
 }
 
 .operator-option.selected {
-  background-color: #eff6ff;
-  color: #3b82f6;
+  background-color: var(--color-primary);
+  color: #ffffff;
 }
 
 .op-icon {
@@ -396,7 +398,7 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
 .toolbar-separator {
   width: 1px;
   height: 24px;
-  background-color: #e5e7eb;
+  background-color: var(--color-border);
   margin: 0 8px;
 }
 
@@ -408,12 +410,12 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
   min-width: 50px;
   text-align: center;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .toolbar-info {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .settings-btn {

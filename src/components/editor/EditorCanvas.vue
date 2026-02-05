@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { usePetriNetStore } from '@/stores/petriNet'
 import { useTokenGameStore } from '@/stores/tokenGame'
+import { useConfigStore } from '@/stores/config'
 import { VISUAL, DEFAULTS } from '@/types/petri-net'
 import { snapToGrid } from '@/utils/geometry'
 import PlaceNode from '@/components/canvas/PlaceNode.vue'
@@ -11,17 +12,17 @@ import OperatorNode from '@/components/canvas/OperatorNode.vue'
 import ArcEdge from '@/components/canvas/ArcEdge.vue'
 import TokenAnimation from '@/components/canvas/TokenAnimation.vue'
 
-const props = defineProps({
-  showGrid: {
-    type: Boolean,
-    default: true,
-  },
-})
-
 const emit = defineEmits(['resize'])
 
 const store = usePetriNetStore()
 const { places, transitions, operators, arcs, tool, viewport, arcCreation, selectedIds } = storeToRefs(store)
+
+// Config store for editor settings
+const configStore = useConfigStore()
+const { editor: editorConfig } = storeToRefs(configStore)
+
+// Theme-aware grid color (matches CSS variables in style.css)
+const gridColor = computed(() => configStore.isDarkMode ? '#2d3748' : '#e0e0e0')
 
 // Token game store
 const tokenGameStore = useTokenGameStore()
@@ -48,8 +49,10 @@ const stageConfig = ref({
   height: 600,
 })
 
-// Grid layer config
-const gridSize = VISUAL.grid.size
+// Grid settings from config
+const gridSize = computed(() => editorConfig.value.gridSize)
+const showGrid = computed(() => editorConfig.value.showGrid)
+const snapEnabled = computed(() => editorConfig.value.snapToGrid)
 
 // Update canvas size on mount and resize
 const updateSize = () => {
@@ -74,23 +77,24 @@ onUnmounted(() => {
 const gridLines = computed(() => {
   const lines = []
   const { width, height } = stageConfig.value
-  const offsetX = viewport.value.x % gridSize
-  const offsetY = viewport.value.y % gridSize
+  const size = gridSize.value
+  const offsetX = viewport.value.x % size
+  const offsetY = viewport.value.y % size
 
   // Vertical lines
-  for (let x = offsetX; x < width; x += gridSize) {
+  for (let x = offsetX; x < width; x += size) {
     lines.push({
       points: [x, 0, x, height],
-      stroke: VISUAL.grid.color,
+      stroke: gridColor.value,
       strokeWidth: 0.5,
     })
   }
 
   // Horizontal lines
-  for (let y = offsetY; y < height; y += gridSize) {
+  for (let y = offsetY; y < height; y += size) {
     lines.push({
       points: [0, y, width, y],
-      stroke: VISUAL.grid.color,
+      stroke: gridColor.value,
       strokeWidth: 0.5,
     })
   }
@@ -112,8 +116,8 @@ const handleStageClick = (e) => {
     y: (pointerPos.y - viewport.value.y) / viewport.value.scale,
   }
 
-  // Snap to grid
-  const snappedPos = snapToGrid(worldPos, gridSize)
+  // Snap to grid if enabled
+  const snappedPos = snapEnabled.value ? snapToGrid(worldPos, gridSize.value) : worldPos
 
   // Handle based on current tool
   if (e.target === stage) {
@@ -218,10 +222,11 @@ const handleElementClick = (id, type, e) => {
 
 // Handle element drag
 const handleElementDragEnd = (id, e) => {
-  const newPos = snapToGrid({
+  const rawPos = {
     x: e.target.x(),
     y: e.target.y(),
-  }, gridSize)
+  }
+  const newPos = snapEnabled.value ? snapToGrid(rawPos, gridSize.value) : rawPos
   
   store.moveElementWithHistory(id, newPos)
 }
@@ -329,7 +334,7 @@ defineExpose({
 <style scoped>
 .editor-canvas {
   flex: 1;
-  background-color: #fafafa;
+  background-color: var(--color-canvas);
   overflow: hidden;
   cursor: crosshair;
 }

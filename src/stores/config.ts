@@ -63,8 +63,9 @@ export const useConfigStore = defineStore('config', {
         console.warn('Failed to load configuration:', e)
       }
 
-      // Apply theme on load
+      // Apply theme and locale on load
       this.applyTheme()
+      this.applyLocale()
 
       // Listen for system theme changes
       window
@@ -138,6 +139,10 @@ export const useConfigStore = defineStore('config', {
     updateLanguage(config: Partial<LanguageConfig>) {
       this.language = { ...this.language, ...config }
       this.save()
+      
+      if (config.locale !== undefined) {
+        this.applyLocale()
+      }
     },
 
     /**
@@ -155,6 +160,18 @@ export const useConfigStore = defineStore('config', {
     setLocale(locale: Locale) {
       this.language.locale = locale
       this.save()
+      this.applyLocale()
+    },
+
+    /**
+     * Apply locale to document and i18n
+     */
+    applyLocale() {
+      document.documentElement.setAttribute('lang', this.language.locale)
+      // Update i18n locale (dynamic import to avoid circular dependency)
+      import('@/i18n').then(({ setLocale }) => {
+        setLocale(this.language.locale)
+      })
     },
 
     /**

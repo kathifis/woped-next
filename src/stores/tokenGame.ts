@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { nanoid } from 'nanoid'
 import { usePetriNetStore } from './petriNet'
+import { useConfigStore } from './config'
 import type {
   TokenGameState,
   TokenGameStatus,
@@ -79,7 +80,12 @@ export const useTokenGameStore = defineStore('tokenGame', {
      */
     start() {
       const petriNetStore = usePetriNetStore()
+      const configStore = useConfigStore()
       const net = petriNetStore.net
+
+      // Apply settings from config
+      this.autoPlayDelay = configStore.tokenGame.defaultSpeed
+      this.conflictResolution = configStore.tokenGame.conflictResolution
 
       // Get initial marking from places
       const initialMarking = this.createMarking(net)

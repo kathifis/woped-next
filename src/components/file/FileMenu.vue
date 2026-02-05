@@ -1,17 +1,18 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { usePetriNetStore } from '@/stores/petriNet'
 import { fileService } from '@/services/file/fileService'
 import { imageExporter } from '@/services/file/imageExporter'
 import { FORMAT_NAMES, FILE_EXTENSIONS } from '@/types/file-formats'
 
+const { t } = useI18n()
 const store = usePetriNetStore()
 const { net } = storeToRefs(store)
 
 // Menu state
 const showMenu = ref(false)
-const showExportSubmenu = ref(false)
 const isLoading = ref(false)
 const error = ref('')
 
@@ -22,7 +23,6 @@ const includeLayout = ref(true)
 const handleClickOutside = (e) => {
   if (!e.target.closest('.file-menu')) {
     showMenu.value = false
-    showExportSubmenu.value = false
   }
 }
 
@@ -67,7 +67,6 @@ const handleOpen = async () => {
 // Save as PNML
 const handleSavePNML = async () => {
   showMenu.value = false
-  showExportSubmenu.value = false
   
   try {
     await fileService.exportToFile(net.value, {
@@ -84,7 +83,6 @@ const handleSavePNML = async () => {
 // Save as JSON
 const handleSaveJSON = async () => {
   showMenu.value = false
-  showExportSubmenu.value = false
   
   try {
     await fileService.exportToFile(net.value, {
@@ -101,7 +99,6 @@ const handleSaveJSON = async () => {
 // Export as SVG
 const handleExportSVG = async () => {
   showMenu.value = false
-  showExportSubmenu.value = false
   
   try {
     const svg = imageExporter.exportSVG(net.value)
@@ -115,7 +112,6 @@ const handleExportSVG = async () => {
 // Export as PNG
 const handleExportPNG = async () => {
   showMenu.value = false
-  showExportSubmenu.value = false
   
   isLoading.value = true
   try {
@@ -143,9 +139,6 @@ const downloadBlob = (blob, filename) => {
 // Toggle menu
 const toggleMenu = () => {
   showMenu.value = !showMenu.value
-  if (!showMenu.value) {
-    showExportSubmenu.value = false
-  }
 }
 </script>
 
@@ -157,20 +150,20 @@ const toggleMenu = () => {
       @click="toggleMenu"
     >
       <span class="icon">📁</span>
-      <span class="label">File</span>
+      <span class="label">{{ $t('menu.file') }}</span>
       <span class="arrow">▾</span>
     </button>
 
     <div v-if="showMenu" class="menu-dropdown">
       <button class="menu-item" @click="handleNew">
         <span class="item-icon">📄</span>
-        <span class="item-label">New</span>
+        <span class="item-label">{{ $t('menu.new') }}</span>
         <span class="item-shortcut">Ctrl+N</span>
       </button>
 
       <button class="menu-item" @click="handleOpen" :disabled="isLoading">
         <span class="item-icon">📂</span>
-        <span class="item-label">Open...</span>
+        <span class="item-label">{{ $t('menu.open') }}...</span>
         <span class="item-shortcut">Ctrl+O</span>
       </button>
 
@@ -178,43 +171,32 @@ const toggleMenu = () => {
 
       <button class="menu-item" @click="handleSavePNML">
         <span class="item-icon">💾</span>
-        <span class="item-label">Save as PNML</span>
+        <span class="item-label">{{ $t('menu.save') }} (PNML)</span>
         <span class="item-shortcut">Ctrl+S</span>
       </button>
 
       <button class="menu-item" @click="handleSaveJSON">
         <span class="item-icon">💾</span>
-        <span class="item-label">Save as JSON</span>
+        <span class="item-label">{{ $t('menu.save') }} (JSON)</span>
       </button>
 
       <div class="menu-separator"></div>
 
-      <div 
-        class="menu-item has-submenu"
-        @mouseenter="showExportSubmenu = true"
-        @mouseleave="showExportSubmenu = false"
-      >
-        <span class="item-icon">📤</span>
-        <span class="item-label">Export</span>
-        <span class="submenu-arrow">▸</span>
+      <button class="menu-item" @click="handleExportSVG">
+        <span class="item-icon">🖼️</span>
+        <span class="item-label">{{ $t('menu.exportSvg') }}</span>
+      </button>
 
-        <div v-if="showExportSubmenu" class="submenu">
-          <button class="menu-item" @click="handleExportSVG">
-            <span class="item-icon">🖼️</span>
-            <span class="item-label">SVG Image</span>
-          </button>
-          <button class="menu-item" @click="handleExportPNG" :disabled="isLoading">
-            <span class="item-icon">🖼️</span>
-            <span class="item-label">PNG Image</span>
-          </button>
-        </div>
-      </div>
+      <button class="menu-item" @click="handleExportPNG" :disabled="isLoading">
+        <span class="item-icon">🖼️</span>
+        <span class="item-label">{{ $t('menu.exportPng') }}</span>
+      </button>
 
       <div class="menu-separator"></div>
 
       <label class="menu-checkbox">
         <input type="checkbox" v-model="includeLayout" />
-        <span>Include Layout</span>
+        <span>{{ $t('menu.includeLayout') }}</span>
       </label>
     </div>
   </div>
@@ -233,7 +215,7 @@ const toggleMenu = () => {
   border: 1px solid transparent;
   border-radius: 6px;
   background-color: transparent;
-  color: #374151;
+  color: var(--color-text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -241,8 +223,8 @@ const toggleMenu = () => {
 
 .menu-trigger:hover,
 .menu-trigger.active {
-  background-color: #f3f4f6;
-  border-color: #e5e7eb;
+  background-color: var(--color-bg-tertiary);
+  border-color: var(--color-border);
 }
 
 .menu-trigger .icon {
@@ -259,13 +241,12 @@ const toggleMenu = () => {
   top: 100%;
   left: 0;
   margin-top: 4px;
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 100;
   min-width: 220px;
-  overflow: hidden;
   padding: 4px 0;
 }
 
@@ -277,7 +258,7 @@ const toggleMenu = () => {
   padding: 8px 12px;
   border: none;
   background-color: transparent;
-  color: #374151;
+  color: var(--color-text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: background-color 0.1s ease;
@@ -285,16 +266,12 @@ const toggleMenu = () => {
 }
 
 .menu-item:hover:not(:disabled) {
-  background-color: #f3f4f6;
+  background-color: var(--color-bg-tertiary);
 }
 
 .menu-item:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.menu-item.has-submenu {
-  position: relative;
 }
 
 .item-icon {
@@ -308,31 +285,12 @@ const toggleMenu = () => {
 
 .item-shortcut {
   font-size: 11px;
-  color: #9ca3af;
-}
-
-.submenu-arrow {
-  font-size: 10px;
-  color: #9ca3af;
-}
-
-.submenu {
-  position: absolute;
-  left: 100%;
-  top: 0;
-  margin-left: 4px;
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 150px;
-  overflow: hidden;
-  padding: 4px 0;
+  color: var(--color-text-muted);
 }
 
 .menu-separator {
   height: 1px;
-  background-color: #e5e7eb;
+  background-color: var(--color-border);
   margin: 4px 0;
 }
 
@@ -342,7 +300,7 @@ const toggleMenu = () => {
   gap: 8px;
   padding: 8px 12px;
   font-size: 13px;
-  color: #374151;
+  color: var(--color-text-secondary);
   cursor: pointer;
 }
 

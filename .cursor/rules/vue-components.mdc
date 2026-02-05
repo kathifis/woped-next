@@ -9,15 +9,18 @@ alwaysApply: false
 ## Struktur
 ```vue
 <script setup>
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 // Imports, Props, Emits, Composables, Reactive State, Methods
 </script>
 
 <template>
-  <!-- HTML -->
+  <!-- HTML mit $t('key') für Übersetzungen -->
 </template>
 
 <style scoped>
-/* Styles */
+/* CSS-Variablen für Theming */
+/* :global(.dark) für Dark Mode */
 </style>
 ```
 
@@ -27,3 +30,13 @@ alwaysApply: false
 - Events mit `defineEmits()` definieren
 - `scoped` Styles bevorzugen
 - Komponenten in PascalCase benennen
+
+## Internationalisierung
+- Alle UI-Texte mit `$t('key.path')` übersetzen
+- Übersetzungen in `src/i18n/locales/` pflegen
+- Computed Properties für dynamische Übersetzungen verwenden
+
+## Theming
+- CSS-Variablen verwenden: `var(--color-bg)`, `var(--color-text)`
+- Dark Mode mit `:global(.dark)` Selektor
+- Keine hardcodierten Farben in Components

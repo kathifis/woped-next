@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useConfigStore } from '@/stores/config'
 
 const props = defineProps({
@@ -12,18 +13,19 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+const { t } = useI18n()
 const configStore = useConfigStore()
 const { general, editor, tokenGame, analysis, language } = storeToRefs(configStore)
 
 // Active tab
 const activeTab = ref('general')
 
-const tabs = [
-  { id: 'general', label: 'General' },
-  { id: 'editor', label: 'Editor' },
-  { id: 'simulation', label: 'Simulation' },
-  { id: 'analysis', label: 'Analysis' },
-]
+const tabs = computed(() => [
+  { id: 'general', label: t('settings.general') },
+  { id: 'editor', label: t('settings.editor') },
+  { id: 'simulation', label: t('settings.simulation') },
+  { id: 'analysis', label: t('settings.analysis') },
+])
 
 // Local copies for editing
 const localGeneral = ref({ ...general.value })
@@ -31,6 +33,10 @@ const localEditor = ref({ ...editor.value })
 const localTokenGame = ref({ ...tokenGame.value })
 const localAnalysis = ref({ ...analysis.value })
 const localLanguage = ref({ ...language.value })
+
+// Store original settings when dialog opens (for cancel restore)
+const originalTheme = ref(null)
+const originalLocale = ref(null)
 
 // Reset local values when dialog opens
 watch(
@@ -42,6 +48,8 @@ watch(
       localTokenGame.value = { ...tokenGame.value }
       localAnalysis.value = { ...analysis.value }
       localLanguage.value = { ...language.value }
+      originalTheme.value = general.value.theme
+      originalLocale.value = language.value.locale
     }
   }
 )
@@ -56,8 +64,14 @@ const saveSettings = () => {
   emit('close')
 }
 
-// Cancel and close
+// Cancel and close (restore settings if changed)
 const cancel = () => {
+  if (originalTheme.value && originalTheme.value !== localGeneral.value.theme) {
+    configStore.setTheme(originalTheme.value)
+  }
+  if (originalLocale.value && originalLocale.value !== localLanguage.value.locale) {
+    configStore.setLocale(originalLocale.value)
+  }
   emit('close')
 }
 
@@ -69,6 +83,16 @@ const resetDefaults = () => {
   localTokenGame.value = { ...tokenGame.value }
   localAnalysis.value = { ...analysis.value }
   localLanguage.value = { ...language.value }
+}
+
+// Preview theme immediately when changed
+const previewTheme = () => {
+  configStore.setTheme(localGeneral.value.theme)
+}
+
+// Preview locale immediately when changed
+const previewLocale = () => {
+  configStore.setLocale(localLanguage.value.locale)
 }
 
 // Handle escape key
@@ -90,8 +114,8 @@ const handleKeydown = (e) => {
       <div class="dialog" role="dialog" aria-labelledby="settings-title">
         <!-- Header -->
         <div class="dialog-header">
-          <h2 id="settings-title">Settings</h2>
-          <button class="close-btn" @click="cancel" aria-label="Close">×</button>
+          <h2 id="settings-title">{{ $t('settings.title') }}</h2>
+          <button class="close-btn" @click="cancel" :aria-label="$t('common.close')">×</button>
         </div>
 
         <!-- Tabs -->
@@ -111,22 +135,22 @@ const handleKeydown = (e) => {
           <!-- General Tab -->
           <div v-show="activeTab === 'general'" class="tab-content">
             <div class="setting-group">
-              <h3>Appearance</h3>
+              <h3>{{ $t('settings.appearance') }}</h3>
               <div class="setting-row">
-                <label>Theme</label>
-                <select v-model="localGeneral.theme">
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
-                  <option value="system">System</option>
+                <label>{{ $t('settings.theme') }}</label>
+                <select v-model="localGeneral.theme" @change="previewTheme">
+                  <option value="light">{{ $t('settings.themeLight') }}</option>
+                  <option value="dark">{{ $t('settings.themeDark') }}</option>
+                  <option value="system">{{ $t('settings.themeSystem') }}</option>
                 </select>
               </div>
             </div>
 
             <div class="setting-group">
-              <h3>Language</h3>
+              <h3>{{ $t('settings.language') }}</h3>
               <div class="setting-row">
-                <label>Language</label>
-                <select v-model="localLanguage.locale">
+                <label>{{ $t('settings.language') }}</label>
+                <select v-model="localLanguage.locale" @change="previewLocale">
                   <option value="en">English</option>
                   <option value="de">Deutsch</option>
                 </select>
@@ -134,13 +158,13 @@ const handleKeydown = (e) => {
             </div>
 
             <div class="setting-group">
-              <h3>Auto-Save</h3>
+              <h3>{{ $t('settings.autoSave') }}</h3>
               <div class="setting-row">
-                <label>Enable Auto-Save</label>
+                <label>{{ $t('settings.enableAutoSave') }}</label>
                 <input type="checkbox" v-model="localGeneral.autoSave" />
               </div>
               <div class="setting-row" v-if="localGeneral.autoSave">
-                <label>Interval (seconds)</label>
+                <label>{{ $t('settings.autoSaveInterval') }}</label>
                 <input
                   type="number"
                   v-model.number="localGeneral.autoSaveInterval"
@@ -156,17 +180,17 @@ const handleKeydown = (e) => {
           <!-- Editor Tab -->
           <div v-show="activeTab === 'editor'" class="tab-content">
             <div class="setting-group">
-              <h3>Grid</h3>
+              <h3>{{ $t('settings.grid') }}</h3>
               <div class="setting-row">
-                <label>Show Grid</label>
+                <label>{{ $t('settings.showGrid') }}</label>
                 <input type="checkbox" v-model="localEditor.showGrid" />
               </div>
               <div class="setting-row">
-                <label>Snap to Grid</label>
+                <label>{{ $t('settings.snapToGrid') }}</label>
                 <input type="checkbox" v-model="localEditor.snapToGrid" />
               </div>
               <div class="setting-row">
-                <label>Grid Size (px)</label>
+                <label>{{ $t('settings.gridSize') }}</label>
                 <input
                   type="number"
                   v-model.number="localEditor.gridSize"
@@ -178,17 +202,17 @@ const handleKeydown = (e) => {
             </div>
 
             <div class="setting-group">
-              <h3>Display</h3>
+              <h3>{{ $t('settings.display') }}</h3>
               <div class="setting-row">
-                <label>Show Labels</label>
+                <label>{{ $t('settings.showLabels') }}</label>
                 <input type="checkbox" v-model="localEditor.showLabels" />
               </div>
               <div class="setting-row">
-                <label>Show Token Numbers</label>
+                <label>{{ $t('settings.showTokenNumbers') }}</label>
                 <input type="checkbox" v-model="localEditor.showTokenNumbers" />
               </div>
               <div class="setting-row">
-                <label>Default Zoom (%)</label>
+                <label>{{ $t('settings.defaultZoom') }}</label>
                 <input
                   type="number"
                   v-model.number="localEditor.defaultZoom"
@@ -201,9 +225,9 @@ const handleKeydown = (e) => {
             </div>
 
             <div class="setting-group">
-              <h3>Animation</h3>
+              <h3>{{ $t('settings.animation') }}</h3>
               <div class="setting-row">
-                <label>Animation Duration (ms)</label>
+                <label>{{ $t('settings.animationDuration') }}</label>
                 <input
                   type="number"
                   v-model.number="localEditor.animationDuration"
@@ -218,9 +242,9 @@ const handleKeydown = (e) => {
           <!-- Simulation Tab -->
           <div v-show="activeTab === 'simulation'" class="tab-content">
             <div class="setting-group">
-              <h3>Token Game</h3>
+              <h3>{{ $t('settings.tokenGameSettings') }}</h3>
               <div class="setting-row">
-                <label>Default Speed (ms)</label>
+                <label>{{ $t('settings.defaultSpeed') }}</label>
                 <input
                   type="number"
                   v-model.number="localTokenGame.defaultSpeed"
@@ -230,23 +254,23 @@ const handleKeydown = (e) => {
                 />
               </div>
               <div class="setting-row">
-                <label>Show Animations</label>
+                <label>{{ $t('settings.showAnimations') }}</label>
                 <input type="checkbox" v-model="localTokenGame.showAnimations" />
               </div>
               <div class="setting-row">
-                <label>Highlight Enabled Transitions</label>
+                <label>{{ $t('settings.highlightEnabled') }}</label>
                 <input type="checkbox" v-model="localTokenGame.highlightEnabled" />
               </div>
             </div>
 
             <div class="setting-group">
-              <h3>Conflict Resolution</h3>
+              <h3>{{ $t('settings.conflictResolution') }}</h3>
               <div class="setting-row">
-                <label>Default Mode</label>
+                <label>{{ $t('settings.defaultMode') }}</label>
                 <select v-model="localTokenGame.conflictResolution">
-                  <option value="manual">Manual</option>
-                  <option value="random">Random</option>
-                  <option value="first">First Available</option>
+                  <option value="manual">{{ $t('tokenGame.manual') }}</option>
+                  <option value="random">{{ $t('tokenGame.random') }}</option>
+                  <option value="first">{{ $t('tokenGame.first') }}</option>
                 </select>
               </div>
             </div>
@@ -255,9 +279,9 @@ const handleKeydown = (e) => {
           <!-- Analysis Tab -->
           <div v-show="activeTab === 'analysis'" class="tab-content">
             <div class="setting-group">
-              <h3>State Space</h3>
+              <h3>{{ $t('settings.stateSpace') }}</h3>
               <div class="setting-row">
-                <label>Maximum States</label>
+                <label>{{ $t('settings.maxStates') }}</label>
                 <input
                   type="number"
                   v-model.number="localAnalysis.maxStates"
@@ -269,13 +293,13 @@ const handleKeydown = (e) => {
             </div>
 
             <div class="setting-group">
-              <h3>Behavior</h3>
+              <h3>{{ $t('settings.behavior') }}</h3>
               <div class="setting-row">
-                <label>Auto-Analyze on Change</label>
+                <label>{{ $t('settings.autoAnalyze') }}</label>
                 <input type="checkbox" v-model="localAnalysis.autoAnalyze" />
               </div>
               <div class="setting-row">
-                <label>Show Info Messages</label>
+                <label>{{ $t('settings.showInfoMessages') }}</label>
                 <input type="checkbox" v-model="localAnalysis.showInfoMessages" />
               </div>
             </div>
@@ -284,10 +308,10 @@ const handleKeydown = (e) => {
 
         <!-- Footer -->
         <div class="dialog-footer">
-          <button class="btn-reset" @click="resetDefaults">Reset to Defaults</button>
+          <button class="btn-reset" @click="resetDefaults">{{ $t('settings.resetDefaults') }}</button>
           <div class="footer-actions">
-            <button class="btn-cancel" @click="cancel">Cancel</button>
-            <button class="btn-save" @click="saveSettings">Save</button>
+            <button class="btn-cancel" @click="cancel">{{ $t('common.cancel') }}</button>
+            <button class="btn-save" @click="saveSettings">{{ $t('common.save') }}</button>
           </div>
         </div>
       </div>
@@ -307,7 +331,7 @@ const handleKeydown = (e) => {
 }
 
 .dialog {
-  background: white;
+  background: var(--color-bg-secondary);
   border-radius: 12px;
   width: 90%;
   max-width: 500px;
@@ -322,14 +346,14 @@ const handleKeydown = (e) => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .dialog-header h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .close-btn {
@@ -338,21 +362,21 @@ const handleKeydown = (e) => {
   border: none;
   background: transparent;
   font-size: 20px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   cursor: pointer;
   border-radius: 4px;
 }
 
 .close-btn:hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
 }
 
 .tabs {
   display: flex;
   padding: 0 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
 }
 
 .tab {
@@ -360,26 +384,27 @@ const handleKeydown = (e) => {
   border: none;
   background: none;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
 
 .tab:hover {
-  color: #374151;
+  color: var(--color-text-secondary);
 }
 
 .tab.active {
-  color: #3b82f6;
-  border-bottom-color: #3b82f6;
-  background: white;
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: var(--color-bg-secondary);
 }
 
 .dialog-content {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  background: var(--color-bg-secondary);
 }
 
 .tab-content {
@@ -398,7 +423,7 @@ const handleKeydown = (e) => {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -412,34 +437,74 @@ const handleKeydown = (e) => {
 .setting-row label {
   flex: 1;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-text-secondary);
 }
 
 .setting-row input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
   width: 18px;
   height: 18px;
   cursor: pointer;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.setting-row input[type='checkbox']:checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.setting-row input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.setting-row input[type='checkbox']:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.setting-row input[type='checkbox']:hover {
+  border-color: var(--color-primary);
 }
 
 .setting-row input[type='number'],
 .setting-row select {
   width: 120px;
   padding: 6px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   font-size: 13px;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
 }
 
 .setting-row input[type='number']:focus,
 .setting-row select:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.setting-row select option {
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
 }
 
 .hint {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   min-width: 50px;
 }
 
@@ -448,8 +513,8 @@ const handleKeydown = (e) => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
   border-radius: 0 0 12px 12px;
 }
 
@@ -462,32 +527,33 @@ const handleKeydown = (e) => {
   padding: 8px 14px;
   border: none;
   background: none;
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-size: 13px;
   cursor: pointer;
 }
 
 .btn-reset:hover {
-  color: #dc2626;
+  color: var(--color-error);
 }
 
 .btn-cancel {
   padding: 8px 16px;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
   border-radius: 6px;
   font-size: 13px;
   cursor: pointer;
 }
 
 .btn-cancel:hover {
-  background: #f3f4f6;
+  background: var(--color-bg-tertiary);
 }
 
 .btn-save {
   padding: 8px 20px;
   border: none;
-  background: #3b82f6;
+  background: var(--color-primary);
   color: white;
   border-radius: 6px;
   font-size: 13px;
@@ -496,75 +562,6 @@ const handleKeydown = (e) => {
 }
 
 .btn-save:hover {
-  background: #2563eb;
-}
-
-/* Dark mode support */
-:global(.dark) .dialog {
-  background: #1f2937;
-}
-
-:global(.dark) .dialog-header {
-  border-color: #374151;
-}
-
-:global(.dark) .dialog-header h2 {
-  color: #f9fafb;
-}
-
-:global(.dark) .close-btn {
-  color: #9ca3af;
-}
-
-:global(.dark) .close-btn:hover {
-  background: #374151;
-  color: #f9fafb;
-}
-
-:global(.dark) .tabs {
-  background: #111827;
-  border-color: #374151;
-}
-
-:global(.dark) .tab {
-  color: #9ca3af;
-}
-
-:global(.dark) .tab:hover {
-  color: #f9fafb;
-}
-
-:global(.dark) .tab.active {
-  background: #1f2937;
-}
-
-:global(.dark) .setting-group h3 {
-  color: #d1d5db;
-}
-
-:global(.dark) .setting-row label {
-  color: #d1d5db;
-}
-
-:global(.dark) .setting-row input[type='number'],
-:global(.dark) .setting-row select {
-  background: #374151;
-  border-color: #4b5563;
-  color: #f9fafb;
-}
-
-:global(.dark) .dialog-footer {
-  background: #111827;
-  border-color: #374151;
-}
-
-:global(.dark) .btn-cancel {
-  background: #374151;
-  border-color: #4b5563;
-  color: #f9fafb;
-}
-
-:global(.dark) .btn-cancel:hover {
-  background: #4b5563;
+  background: var(--color-primary-hover);
 }
 </style>

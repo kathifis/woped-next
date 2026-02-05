@@ -1,9 +1,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { usePetriNetStore } from '@/stores/petriNet'
 import { analyzeWorkflow, analyzeSoundness, computeStatistics } from '@/services/analysis'
 
+const { t } = useI18n()
 const petriNetStore = usePetriNetStore()
 const { net } = storeToRefs(petriNetStore)
 
@@ -85,21 +87,21 @@ const formatDuration = (ms) => {
   <div class="analysis-panel">
     <!-- Header -->
     <div class="panel-header">
-      <h3>Analysis</h3>
+      <h3>{{ $t('analysis.title') }}</h3>
       <div class="header-actions">
         <button
           class="btn-run"
           :disabled="isAnalyzing"
           @click="runAllAnalyses"
         >
-          {{ isAnalyzing ? 'Analyzing...' : '▶ Run All' }}
+          {{ isAnalyzing ? $t('analysis.analyzing') : '▶ ' + $t('analysis.runAll') }}
         </button>
         <button
           v-if="workflowResult || soundnessResult"
           class="btn-clear"
           @click="clearResults"
         >
-          Clear
+          {{ $t('analysis.clear') }}
         </button>
       </div>
     </div>
@@ -108,37 +110,37 @@ const formatDuration = (ms) => {
     <div class="section">
       <div class="section-header" @click="showStatistics = !showStatistics">
         <span class="toggle">{{ showStatistics ? '▼' : '▶' }}</span>
-        <span class="section-title">Statistics</span>
+        <span class="section-title">{{ $t('analysis.statistics') }}</span>
       </div>
       <div v-if="showStatistics" class="section-content">
         <div class="stats-grid">
           <div class="stat">
             <span class="stat-value">{{ statistics.places }}</span>
-            <span class="stat-label">Places</span>
+            <span class="stat-label">{{ $t('properties.places') }}</span>
           </div>
           <div class="stat">
             <span class="stat-value">{{ statistics.transitions }}</span>
-            <span class="stat-label">Transitions</span>
+            <span class="stat-label">{{ $t('properties.transitions') }}</span>
           </div>
           <div class="stat">
             <span class="stat-value">{{ statistics.arcs }}</span>
-            <span class="stat-label">Arcs</span>
+            <span class="stat-label">{{ $t('properties.arcs') }}</span>
           </div>
           <div class="stat">
             <span class="stat-value">{{ statistics.operators }}</span>
-            <span class="stat-label">Operators</span>
+            <span class="stat-label">{{ $t('properties.operators') }}</span>
           </div>
           <div class="stat">
             <span class="stat-value">{{ statistics.totalTokens }}</span>
-            <span class="stat-label">Tokens</span>
+            <span class="stat-label">{{ $t('properties.tokens') }}</span>
           </div>
         </div>
         <div class="stat-props">
           <div class="prop" :class="{ active: statistics.freeChoice }">
-            Free Choice: {{ statistics.freeChoice ? 'Yes' : 'No' }}
+            {{ $t('analysis.freeChoice') }}: {{ statistics.freeChoice ? $t('common.yes') : $t('common.no') }}
           </div>
           <div class="prop" :class="{ active: statistics.stronglyConnected }">
-            Connected: {{ statistics.stronglyConnected ? 'Yes' : 'No' }}
+            {{ $t('analysis.connected') }}: {{ statistics.stronglyConnected ? $t('common.yes') : $t('common.no') }}
           </div>
         </div>
       </div>
@@ -148,24 +150,24 @@ const formatDuration = (ms) => {
     <div class="section">
       <div class="section-header" @click="showWorkflow = !showWorkflow">
         <span class="toggle">{{ showWorkflow ? '▼' : '▶' }}</span>
-        <span class="section-title">Workflow Check</span>
+        <span class="section-title">{{ $t('analysis.workflowCheck') }}</span>
         <span
           v-if="workflowResult"
           :class="['badge', workflowResult.valid ? 'valid' : 'invalid']"
         >
-          {{ workflowResult.valid ? '✓ Valid' : '✗ Invalid' }}
+          {{ workflowResult.valid ? '✓ ' + $t('analysis.valid') : '✗ ' + $t('analysis.invalid') }}
         </span>
         <button
           class="btn-run-small"
           :disabled="isAnalyzing"
           @click.stop="runWorkflowAnalysis"
         >
-          Run
+          {{ $t('analysis.run') }}
         </button>
       </div>
       <div v-if="showWorkflow && workflowResult" class="section-content">
         <div class="result-meta">
-          <span>Duration: {{ formatDuration(workflowResult.duration) }}</span>
+          <span>{{ $t('analysis.duration') }}: {{ formatDuration(workflowResult.duration) }}</span>
         </div>
         <div class="issues-list">
           <div
@@ -187,13 +189,13 @@ const formatDuration = (ms) => {
                   {{ id.substring(0, 8) }}...
                 </button>
                 <span v-if="issue.affectedElements.length > 3" class="more">
-                  +{{ issue.affectedElements.length - 3 }} more
+                  +{{ issue.affectedElements.length - 3 }} {{ $t('common.more') }}
                 </span>
               </div>
             </div>
           </div>
           <div v-if="workflowResult.issues.length === 0" class="no-issues">
-            No issues found
+            {{ $t('analysis.noIssues') }}
           </div>
         </div>
       </div>
@@ -203,24 +205,24 @@ const formatDuration = (ms) => {
     <div class="section">
       <div class="section-header" @click="showSoundness = !showSoundness">
         <span class="toggle">{{ showSoundness ? '▼' : '▶' }}</span>
-        <span class="section-title">Soundness Check</span>
+        <span class="section-title">{{ $t('analysis.soundnessCheck') }}</span>
         <span
           v-if="soundnessResult"
           :class="['badge', soundnessResult.valid ? 'valid' : 'invalid']"
         >
-          {{ soundnessResult.valid ? '✓ Sound' : '✗ Unsound' }}
+          {{ soundnessResult.valid ? '✓ ' + $t('analysis.sound') : '✗ ' + $t('analysis.unsound') }}
         </span>
         <button
           class="btn-run-small"
           :disabled="isAnalyzing"
           @click.stop="runSoundnessAnalysis"
         >
-          Run
+          {{ $t('analysis.run') }}
         </button>
       </div>
       <div v-if="showSoundness && soundnessResult" class="section-content">
         <div class="result-meta">
-          <span>Duration: {{ formatDuration(soundnessResult.duration) }}</span>
+          <span>{{ $t('analysis.duration') }}: {{ formatDuration(soundnessResult.duration) }}</span>
         </div>
         <div class="issues-list">
           <div
@@ -242,13 +244,13 @@ const formatDuration = (ms) => {
                   {{ id.substring(0, 8) }}...
                 </button>
                 <span v-if="issue.affectedElements.length > 3" class="more">
-                  +{{ issue.affectedElements.length - 3 }} more
+                  +{{ issue.affectedElements.length - 3 }} {{ $t('common.more') }}
                 </span>
               </div>
             </div>
           </div>
           <div v-if="soundnessResult.issues.length === 0" class="no-issues">
-            No issues found
+            {{ $t('analysis.noIssues') }}
           </div>
         </div>
       </div>
@@ -258,8 +260,8 @@ const formatDuration = (ms) => {
 
 <style scoped>
 .analysis-panel {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 12px;
   font-size: 13px;
@@ -275,14 +277,14 @@ const formatDuration = (ms) => {
   align-items: center;
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .panel-header h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .header-actions {
@@ -292,7 +294,7 @@ const formatDuration = (ms) => {
 
 .btn-run {
   padding: 5px 12px;
-  background: #3b82f6;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 4px;
@@ -301,7 +303,7 @@ const formatDuration = (ms) => {
 }
 
 .btn-run:hover:not(:disabled) {
-  background: #2563eb;
+  background: var(--color-primary-hover);
 }
 
 .btn-run:disabled {
@@ -311,20 +313,21 @@ const formatDuration = (ms) => {
 
 .btn-clear {
   padding: 5px 10px;
-  background: white;
-  border: 1px solid #d1d5db;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   font-size: 12px;
+  color: var(--color-text);
   cursor: pointer;
 }
 
 .btn-clear:hover {
-  background: #f3f4f6;
+  background: var(--color-bg-tertiary);
 }
 
 .section {
   margin-bottom: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
 }
 
@@ -333,25 +336,25 @@ const formatDuration = (ms) => {
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  background: #f9fafb;
+  background: var(--color-bg);
   cursor: pointer;
   border-radius: 5px 5px 0 0;
 }
 
 .section-header:hover {
-  background: #f3f4f6;
+  background: var(--color-bg-tertiary);
 }
 
 .toggle {
   font-size: 10px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   width: 12px;
 }
 
 .section-title {
   flex: 1;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-secondary);
 }
 
 .badge {
@@ -362,26 +365,37 @@ const formatDuration = (ms) => {
 }
 
 .badge.valid {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-success-bg, #dcfce7);
+  color: var(--color-success-text, #166534);
 }
 
 .badge.invalid {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--color-error-bg, #fee2e2);
+  color: var(--color-error-text, #991b1b);
+}
+
+:global(.dark) .badge.valid {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+:global(.dark) .badge.invalid {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
 }
 
 .btn-run-small {
   padding: 2px 8px;
-  background: white;
-  border: 1px solid #d1d5db;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   font-size: 10px;
+  color: var(--color-text);
   cursor: pointer;
 }
 
 .btn-run-small:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: var(--color-bg-tertiary);
 }
 
 .btn-run-small:disabled {
@@ -390,12 +404,12 @@ const formatDuration = (ms) => {
 
 .section-content {
   padding: 10px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
 }
 
 .result-meta {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-bottom: 8px;
 }
 
@@ -409,7 +423,7 @@ const formatDuration = (ms) => {
 .stat {
   text-align: center;
   padding: 8px;
-  background: #f9fafb;
+  background: var(--color-bg);
   border-radius: 4px;
 }
 
@@ -417,13 +431,13 @@ const formatDuration = (ms) => {
   display: block;
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .stat-label {
   display: block;
   font-size: 10px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-top: 2px;
 }
 
@@ -436,14 +450,19 @@ const formatDuration = (ms) => {
 .prop {
   font-size: 11px;
   padding: 3px 8px;
-  background: #f3f4f6;
+  background: var(--color-bg-tertiary);
   border-radius: 4px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .prop.active {
   background: #dcfce7;
   color: #166534;
+}
+
+:global(.dark) .prop.active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
 }
 
 .issues-list {
@@ -475,6 +494,21 @@ const formatDuration = (ms) => {
   border: 1px solid #bfdbfe;
 }
 
+:global(.dark) .issue-error {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+:global(.dark) .issue-warning {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+:global(.dark) .issue-info {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
 .issue-icon {
   font-size: 14px;
   line-height: 1;
@@ -490,6 +524,18 @@ const formatDuration = (ms) => {
 
 .issue-info .issue-icon {
   color: #2563eb;
+}
+
+:global(.dark) .issue-error .issue-icon {
+  color: #f87171;
+}
+
+:global(.dark) .issue-warning .issue-icon {
+  color: #fbbf24;
+}
+
+:global(.dark) .issue-info .issue-icon {
+  color: #60a5fa;
 }
 
 .issue-content {
@@ -509,6 +555,26 @@ const formatDuration = (ms) => {
   margin-top: 4px;
 }
 
+:global(.dark) .issue-message {
+  color: #e5e7eb;
+}
+
+:global(.dark) .issue-details {
+  color: #9ca3af;
+}
+
+:global(.dark) .issue-error .issue-message {
+  color: #fecaca;
+}
+
+:global(.dark) .issue-warning .issue-message {
+  color: #fde68a;
+}
+
+:global(.dark) .issue-info .issue-message {
+  color: #bfdbfe;
+}
+
 .affected-elements {
   display: flex;
   flex-wrap: wrap;
@@ -518,29 +584,37 @@ const formatDuration = (ms) => {
 
 .element-btn {
   padding: 2px 6px;
-  background: white;
-  border: 1px solid #d1d5db;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 3px;
   font-size: 10px;
   font-family: monospace;
+  color: var(--color-text);
   cursor: pointer;
 }
 
 .element-btn:hover {
-  background: #f3f4f6;
-  border-color: #3b82f6;
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-primary);
 }
 
 .more {
   font-size: 10px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   align-self: center;
 }
 
 .no-issues {
   text-align: center;
-  color: #6b7280;
+  color: #166534;
+  background: #dcfce7;
+  border-radius: 4px;
   font-size: 12px;
   padding: 12px;
+}
+
+:global(.dark) .no-issues {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.15);
 }
 </style>

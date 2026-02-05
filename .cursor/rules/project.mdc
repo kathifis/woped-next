@@ -10,9 +10,18 @@ Vue.js 3 Frontend mit Vite. Kann als Docker-Container deployed werden.
 ## Tech Stack
 - Vue.js 3 (Composition API)
 - Vite als Build-Tool
+- Pinia für State Management
+- vue-i18n für Internationalisierung (DE/EN)
+- vue-konva für Canvas-Rendering
 - nginx für Produktion (Docker)
 
 ## Befehle
 - `npm run dev` - Entwicklungsserver
 - `npm run build` - Produktions-Build
+- `npm run test` - Tests ausführen
 - `docker compose up --build` - Docker starten
+
+## Wichtige Konventionen
+- Alle UI-Texte müssen übersetzt werden (`$t('key')`)
+- CSS-Variablen für Theming verwenden (`var(--color-*)`)
+- Dark Mode via `:global(.dark)` Selektoren unterstützen

@@ -1,9 +1,13 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { usePetriNetStore } from '@/stores/petriNet'
+import { useConfigStore } from '@/stores/config'
 import { useViewport } from '@/composables/useViewport'
 import { autoLayout } from '@/utils/layout'
+
+const { t } = useI18n()
 
 const props = defineProps({
   canvasWidth: {
@@ -20,6 +24,14 @@ const store = usePetriNetStore()
 const { net } = storeToRefs(store)
 const { zoomPercent, fitToView } = useViewport()
 
+// Config store for grid settings
+const configStore = useConfigStore()
+const { editor: editorConfig } = storeToRefs(configStore)
+
+// Grid state from config
+const showGrid = computed(() => editorConfig.value.showGrid)
+const snapToGrid = computed(() => editorConfig.value.snapToGrid)
+
 // Layout settings
 const showLayoutMenu = ref(false)
 const layoutAlgorithm = ref('hierarchical')
@@ -27,27 +39,20 @@ const layoutDirection = ref('LR')
 const nodeSpacing = ref(80)
 const rankSpacing = ref(120)
 
-// Grid toggle
-const showGrid = ref(true)
-const snapToGrid = ref(true)
-
-// Emit grid settings
-const emit = defineEmits(['update:showGrid', 'update:snapToGrid'])
-
 // Layout algorithms for dropdown
-const algorithms = [
-  { id: 'hierarchical', label: 'Hierarchical' },
-  { id: 'force', label: 'Force-Directed' },
-  { id: 'grid', label: 'Grid' },
-]
+const algorithms = computed(() => [
+  { id: 'hierarchical', label: t('layout.hierarchical') },
+  { id: 'force', label: t('layout.forceDirected') },
+  { id: 'grid', label: t('layout.grid') },
+])
 
 // Directions for dropdown
-const directions = [
-  { id: 'LR', label: 'Left → Right' },
-  { id: 'TB', label: 'Top → Bottom' },
-  { id: 'RL', label: 'Right → Left' },
-  { id: 'BT', label: 'Bottom → Top' },
-]
+const directions = computed(() => [
+  { id: 'LR', label: t('layout.leftToRight') },
+  { id: 'TB', label: t('layout.topToBottom') },
+  { id: 'RL', label: t('layout.rightToLeft') },
+  { id: 'BT', label: t('layout.bottomToTop') },
+])
 
 // Apply layout
 function applyLayout() {
@@ -71,14 +76,12 @@ function applyLayout() {
 
 // Toggle grid
 function toggleGrid() {
-  showGrid.value = !showGrid.value
-  emit('update:showGrid', showGrid.value)
+  configStore.updateEditor({ showGrid: !showGrid.value })
 }
 
 // Toggle snap
 function toggleSnap() {
-  snapToGrid.value = !snapToGrid.value
-  emit('update:snapToGrid', snapToGrid.value)
+  configStore.updateEditor({ snapToGrid: !snapToGrid.value })
 }
 
 // Handle fit to view
@@ -98,16 +101,16 @@ function handleClickOutside(e) {
   <div class="view-toolbar" @click.stop>
     <!-- Zoom controls -->
     <div class="toolbar-group">
-      <button class="tool-btn small" title="Zoom Out" @click="store.zoomOut()">
+      <button class="tool-btn small" :title="$t('toolbar.zoomOut')" @click="store.zoomOut()">
         <span>−</span>
       </button>
       <span class="zoom-display">{{ zoomPercent }}%</span>
-      <button class="tool-btn small" title="Zoom In" @click="store.zoomIn()">
+      <button class="tool-btn small" :title="$t('toolbar.zoomIn')" @click="store.zoomIn()">
         <span>+</span>
       </button>
-      <button class="tool-btn" title="Fit to View" @click="handleFitToView">
+      <button class="tool-btn" :title="$t('toolbar.fitToView')" @click="handleFitToView">
         <span class="icon">⊡</span>
-        <span class="label">Fit</span>
+        <span class="label">{{ $t('toolbar.fit') }}</span>
       </button>
     </div>
 
@@ -117,19 +120,19 @@ function handleClickOutside(e) {
     <div class="toolbar-group">
       <button
         :class="['tool-btn', { active: showGrid }]"
-        title="Toggle Grid"
+        :title="$t('toolbar.toggleGrid')"
         @click="toggleGrid"
       >
         <span class="icon">▦</span>
-        <span class="label">Grid</span>
+        <span class="label">{{ $t('toolbar.grid') }}</span>
       </button>
       <button
         :class="['tool-btn', { active: snapToGrid }]"
-        title="Snap to Grid"
+        :title="$t('toolbar.snapToGrid')"
         @click="toggleSnap"
       >
         <span class="icon">⊞</span>
-        <span class="label">Snap</span>
+        <span class="label">{{ $t('toolbar.snap') }}</span>
       </button>
     </div>
 
@@ -142,16 +145,16 @@ function handleClickOutside(e) {
         @click="showLayoutMenu = !showLayoutMenu"
       >
         <span class="icon">⬡</span>
-        <span class="label">Auto Layout</span>
+        <span class="label">{{ $t('layout.autoLayout') }}</span>
         <span class="dropdown-arrow">▾</span>
       </button>
 
       <!-- Layout menu -->
       <div v-if="showLayoutMenu" class="layout-menu">
-        <div class="menu-header">Layout Settings</div>
+        <div class="menu-header">{{ $t('layout.settings') }}</div>
 
         <div class="menu-field">
-          <label>Algorithm</label>
+          <label>{{ $t('layout.algorithm') }}</label>
           <select v-model="layoutAlgorithm">
             <option v-for="algo in algorithms" :key="algo.id" :value="algo.id">
               {{ algo.label }}
@@ -160,7 +163,7 @@ function handleClickOutside(e) {
         </div>
 
         <div class="menu-field">
-          <label>Direction</label>
+          <label>{{ $t('layout.direction') }}</label>
           <select v-model="layoutDirection">
             <option v-for="dir in directions" :key="dir.id" :value="dir.id">
               {{ dir.label }}
@@ -169,17 +172,17 @@ function handleClickOutside(e) {
         </div>
 
         <div class="menu-field">
-          <label>Node Spacing</label>
+          <label>{{ $t('layout.nodeSpacing') }}</label>
           <input v-model.number="nodeSpacing" type="number" min="40" max="200" step="10" />
         </div>
 
         <div class="menu-field">
-          <label>Rank Spacing</label>
+          <label>{{ $t('layout.rankSpacing') }}</label>
           <input v-model.number="rankSpacing" type="number" min="60" max="300" step="10" />
         </div>
 
         <div class="menu-actions">
-          <button class="apply-btn" @click="applyLayout">Apply Layout</button>
+          <button class="apply-btn" @click="applyLayout">{{ $t('layout.apply') }}</button>
         </div>
       </div>
     </div>
@@ -191,8 +194,8 @@ function handleClickOutside(e) {
   display: flex;
   align-items: center;
   padding: 6px 12px;
-  background-color: rgba(255, 255, 255, 0.95);
-  border: 1px solid #e5e7eb;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   gap: 6px;
@@ -212,21 +215,21 @@ function handleClickOutside(e) {
   border: 1px solid transparent;
   border-radius: 6px;
   background-color: transparent;
-  color: #374151;
+  color: var(--color-text-secondary);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .tool-btn:hover {
-  background-color: #f3f4f6;
-  border-color: #e5e7eb;
+  background-color: var(--color-bg-tertiary);
+  border-color: var(--color-border);
 }
 
 .tool-btn.active {
-  background-color: #eff6ff;
-  border-color: #3b82f6;
-  color: #3b82f6;
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
 }
 
 .tool-btn.small {
@@ -251,7 +254,7 @@ function handleClickOutside(e) {
 .toolbar-separator {
   width: 1px;
   height: 20px;
-  background-color: #e5e7eb;
+  background-color: var(--color-border);
   margin: 0 4px;
 }
 
@@ -259,7 +262,7 @@ function handleClickOutside(e) {
   min-width: 45px;
   text-align: center;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 /* Layout dropdown menu */
@@ -272,8 +275,8 @@ function handleClickOutside(e) {
   top: 100%;
   left: 0;
   margin-top: 4px;
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 100;
@@ -285,16 +288,16 @@ function handleClickOutside(e) {
   padding: 10px 14px;
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background-color: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .menu-field {
   padding: 10px 14px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .menu-field:last-of-type {
@@ -305,7 +308,7 @@ function handleClickOutside(e) {
   display: block;
   font-size: 11px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-bottom: 6px;
 }
 
@@ -313,30 +316,30 @@ function handleClickOutside(e) {
 .menu-field input {
   width: 100%;
   padding: 6px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   font-size: 13px;
-  color: #111827;
-  background-color: #ffffff;
+  color: var(--color-text);
+  background-color: var(--color-bg-secondary);
   box-sizing: border-box;
 }
 
 .menu-field select:focus,
 .menu-field input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--color-primary);
 }
 
 .menu-actions {
   padding: 10px 14px;
-  background-color: #f9fafb;
-  border-top: 1px solid #e5e7eb;
+  background-color: var(--color-bg);
+  border-top: 1px solid var(--color-border);
 }
 
 .apply-btn {
   width: 100%;
   padding: 8px 16px;
-  background-color: #3b82f6;
+  background-color: var(--color-primary);
   color: #ffffff;
   border: none;
   border-radius: 6px;
@@ -347,6 +350,6 @@ function handleClickOutside(e) {
 }
 
 .apply-btn:hover {
-  background-color: #2563eb;
+  background-color: var(--color-primary-hover);
 }
 </style>

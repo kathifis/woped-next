@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { usePetriNetStore } from '@/stores/petriNet'
+import { useConfigStore } from '@/stores/config'
 import { VISUAL } from '@/types/petri-net'
 import { calculateArcEndpoints, calculateArrowHead, angle } from '@/utils/geometry'
 import { orthogonalRoute, bezierRoute, sampleBezierCurve, pointsToArray } from '@/utils/routing'
@@ -28,6 +29,18 @@ const props = defineProps({
 const emit = defineEmits(['click'])
 
 const store = usePetriNetStore()
+const configStore = useConfigStore()
+
+// Theme colors
+const colors = computed(() => {
+  const dark = configStore.isDarkMode
+  return {
+    stroke: dark ? '#9ca3af' : '#374151',
+    tempStroke: dark ? '#6b7280' : '#9ca3af',
+    selectedStroke: '#3b82f6',
+    labelFill: dark ? '#e5e7eb' : '#374151',
+  }
+})
 const { places, transitions, operators } = storeToRefs(store)
 
 // Get routing mode (default to 'direct')
@@ -159,7 +172,7 @@ const arrowPoints = computed(() => {
 // Line config
 const lineConfig = computed(() => ({
   points: linePoints.value,
-  stroke: props.isSelected ? '#3b82f6' : props.isTemp ? '#999' : '#1a1a1a',
+  stroke: props.isSelected ? colors.value.selectedStroke : props.isTemp ? colors.value.tempStroke : colors.value.stroke,
   strokeWidth: props.isSelected ? 3 : VISUAL.arc.strokeWidth,
   lineCap: 'round',
   lineJoin: 'round',
@@ -170,7 +183,7 @@ const lineConfig = computed(() => ({
 // Arrow config
 const arrowConfig = computed(() => ({
   points: arrowPoints.value,
-  fill: props.isSelected ? '#3b82f6' : props.isTemp ? '#999' : '#1a1a1a',
+  fill: props.isSelected ? colors.value.selectedStroke : props.isTemp ? colors.value.tempStroke : colors.value.stroke,
   closed: true,
 }))
 
@@ -191,7 +204,7 @@ const weightLabelConfig = computed(() => {
     text: String(props.arc.weight),
     fontSize: 12,
     fontFamily: 'system-ui, sans-serif',
-    fill: '#1a1a1a',
+    fill: colors.value.labelFill,
     align: 'center',
     offsetX: 4,
   }
