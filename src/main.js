@@ -10,3 +10,8 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(VueKonva)
 app.mount('#app')
+
+// Initialize config store after mounting
+import { useConfigStore } from './stores/config'
+const configStore = useConfigStore()
+configStore.load()

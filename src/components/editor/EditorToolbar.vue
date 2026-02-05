@@ -2,11 +2,17 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { usePetriNetStore } from '@/stores/petriNet'
+import { useConfigStore } from '@/stores/config'
 import { OperatorType, OPERATOR_INFO } from '@/types/petri-net'
 import FileMenu from '@/components/file/FileMenu.vue'
+import SettingsDialog from '@/components/settings/SettingsDialog.vue'
 
 const store = usePetriNetStore()
+const configStore = useConfigStore()
 const { tool, canUndo, canRedo, viewport, selectedOperatorType } = storeToRefs(store)
+
+// Settings dialog state
+const showSettings = ref(false)
 
 // Operator dropdown state
 const showOperatorMenu = ref(false)
@@ -248,6 +254,18 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
     <div class="toolbar-info">
       <span>{{ store.net.name }}</span>
     </div>
+
+    <!-- Settings button -->
+    <button
+      class="tool-btn settings-btn"
+      title="Settings"
+      @click="showSettings = true"
+    >
+      <span class="tool-icon">⚙</span>
+    </button>
+
+    <!-- Settings Dialog -->
+    <SettingsDialog :open="showSettings" @close="showSettings = false" />
   </div>
 </template>
 
@@ -396,5 +414,13 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
 .toolbar-info {
   font-size: 13px;
   color: #6b7280;
+}
+
+.settings-btn {
+  margin-left: 8px;
+}
+
+.settings-btn .tool-icon {
+  font-size: 18px;
 }
 </style>

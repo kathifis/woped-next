@@ -1,0 +1,126 @@
+/**
+ * Theme options
+ */
+export type ThemeMode = 'light' | 'dark' | 'system'
+
+/**
+ * Language/locale options
+ */
+export type Locale = 'en' | 'de'
+
+/**
+ * General application settings
+ */
+export interface GeneralConfig {
+  theme: ThemeMode
+  autoSave: boolean
+  autoSaveInterval: number // in milliseconds
+  showWelcome: boolean
+}
+
+/**
+ * Editor-specific settings
+ */
+export interface EditorConfig {
+  showGrid: boolean
+  snapToGrid: boolean
+  gridSize: number
+  defaultZoom: number
+  animationDuration: number
+  showLabels: boolean
+  showTokenNumbers: boolean
+}
+
+/**
+ * Token game settings
+ */
+export interface TokenGameConfig {
+  defaultSpeed: number
+  showAnimations: boolean
+  highlightEnabled: boolean
+  conflictResolution: 'manual' | 'random' | 'first'
+}
+
+/**
+ * Analysis settings
+ */
+export interface AnalysisConfig {
+  maxStates: number
+  autoAnalyze: boolean
+  showInfoMessages: boolean
+}
+
+/**
+ * Language settings
+ */
+export interface LanguageConfig {
+  locale: Locale
+}
+
+/**
+ * Recent file entry
+ */
+export interface RecentFile {
+  name: string
+  path?: string
+  lastOpened: number // timestamp
+  format: 'pnml' | 'json'
+}
+
+/**
+ * Complete application configuration
+ */
+export interface AppConfig {
+  general: GeneralConfig
+  editor: EditorConfig
+  tokenGame: TokenGameConfig
+  analysis: AnalysisConfig
+  language: LanguageConfig
+  recentFiles: RecentFile[]
+}
+
+/**
+ * Default configuration values
+ */
+export const DEFAULT_CONFIG: AppConfig = {
+  general: {
+    theme: 'system',
+    autoSave: false,
+    autoSaveInterval: 60000,
+    showWelcome: true,
+  },
+  editor: {
+    showGrid: true,
+    snapToGrid: true,
+    gridSize: 20,
+    defaultZoom: 1,
+    animationDuration: 300,
+    showLabels: true,
+    showTokenNumbers: true,
+  },
+  tokenGame: {
+    defaultSpeed: 1000,
+    showAnimations: true,
+    highlightEnabled: true,
+    conflictResolution: 'manual',
+  },
+  analysis: {
+    maxStates: 1000,
+    autoAnalyze: false,
+    showInfoMessages: true,
+  },
+  language: {
+    locale: 'en',
+  },
+  recentFiles: [],
+}
+
+/**
+ * Maximum number of recent files to store
+ */
+export const MAX_RECENT_FILES = 10
+
+/**
+ * LocalStorage key for config
+ */
+export const CONFIG_STORAGE_KEY = 'woped-config'
