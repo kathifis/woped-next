@@ -1,0 +1,311 @@
+import { nanoid } from 'nanoid'
+import type { PetriNet, Place, Transition, OperatorTransition, Arc, Position } from '@/types/petri-net'
+import { OperatorType } from '@/types/petri-net'
+import type { ImportResult, ImportError } from '@/types/file-formats'
+
+/**
+ * Parser for PNML (Petri Net Markup Language) files
+ */
+export class PNMLParser {
+  /**
+   * Parse PNML XML string to PetriNet
+   */
+  parse(xml: string): ImportResult {
+    const errors: ImportError[] = []
+    const warnings: string[] = []
+
+    try {
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(xml, 'text/xml')
+
+      // Check for parse errors
+      const parseError = doc.querySelector('parsererror')
+      if (parseError) {
+        return {
+          success: false,
+          errors: [{ message: 'Invalid XML: ' + (parseError.textContent || 'Parse error') }],
+          warnings: [],
+        }
+      }
+
+      // Find net element
+      const netElement = doc.querySelector('net')
+      if (!netElement) {
+        return {
+          success: false,
+          errors: [{ message: 'No <net> element found in PNML file' }],
+          warnings: [],
+        }
+      }
+
+      // Parse places
+      const places = this.parsePlaces(netElement, errors, warnings)
+
+      // Parse transitions (including operators)
+      const { transitions, operators } = this.parseTransitions(netElement, errors, warnings)
+
+      // Parse arcs
+      const arcs = this.parseArcs(netElement, errors)
+
+      const net: PetriNet = {
+        id: netElement.getAttribute('id') || nanoid(),
+        name: this.getNetName(netElement) || 'Imported Net',
+        places,
+        transitions,
+        operators,
+        arcs,
+      }
+
+      return {
+        success: errors.length === 0,
+        net,
+        errors,
+        warnings,
+      }
+    } catch (e) {
+      return {
+        success: false,
+        errors: [{ message: `Parse error: ${e instanceof Error ? e.message : 'Unknown error'}` }],
+        warnings: [],
+      }
+    }
+  }
+
+  /**
+   * Get net name from various possible locations
+   */
+  private getNetName(netElement: Element): string {
+    // Try name element
+    const nameText = netElement.querySelector(':scope > name > text')
+    if (nameText?.textContent) return nameText.textContent
+
+    // Try name attribute
+    const nameAttr = netElement.getAttribute('name')
+    if (nameAttr) return nameAttr
+
+    // Try id as fallback
+    return netElement.getAttribute('id') || ''
+  }
+
+  /**
+   * Parse all place elements
+   */
+  private parsePlaces(
+    netElement: Element,
+    errors: ImportError[],
+    warnings: string[]
+  ): Place[] {
+    const places: Place[] = []
+    const placeElements = netElement.querySelectorAll('place')
+
+    placeElements.forEach((placeEl, index) => {
+      const id = placeEl.getAttribute('id')
+      if (!id) {
+        errors.push({ message: `Place at index ${index} has no id attribute`, element: 'place' })
+        return
+      }
+
+      const name = this.getTextContent(placeEl, 'name > text') || `P${index + 1}`
+      const position = this.getPosition(placeEl)
+      const tokens = this.getInitialMarking(placeEl)
+      const capacity = this.getCapacity(placeEl)
+
+      if (!position) {
+        warnings.push(`Place "${name}" has no position, using default`)
+      }
+
+      places.push({
+        id,
+        name,
+        position: position || { x: 100 + index * 100, y: 100 },
+        tokens,
+        capacity,
+      })
+    })
+
+    return places
+  }
+
+  /**
+   * Parse all transition elements (including WoPeD operators)
+   */
+  private parseTransitions(
+    netElement: Element,
+    errors: ImportError[],
+    warnings: string[]
+  ): { transitions: Transition[]; operators: OperatorTransition[] } {
+    const transitions: Transition[] = []
+    const operators: OperatorTransition[] = []
+    const transitionElements = netElement.querySelectorAll('transition')
+
+    transitionElements.forEach((transEl, index) => {
+      const id = transEl.getAttribute('id')
+      if (!id) {
+        errors.push({ message: `Transition at index ${index} has no id attribute`, element: 'transition' })
+        return
+      }
+
+      const name = this.getTextContent(transEl, 'name > text') || `T${index + 1}`
+      const position = this.getPosition(transEl)
+      const label = this.getTextContent(transEl, 'label > text') || undefined
+
+      if (!position) {
+        warnings.push(`Transition "${name}" has no position, using default`)
+      }
+
+      // Check for WoPeD operator toolspecific info
+      const operatorType = this.getWoPeDOperatorType(transEl)
+
+      if (operatorType) {
+        operators.push({
+          id,
+          name,
+          position: position || { x: 100 + index * 100, y: 100 },
+          label,
+          operatorType,
+        })
+      } else {
+        transitions.push({
+          id,
+          name,
+          position: position || { x: 100 + index * 100, y: 100 },
+          label,
+        })
+      }
+    })
+
+    return { transitions, operators }
+  }
+
+  /**
+   * Parse all arc elements
+   */
+  private parseArcs(netElement: Element, errors: ImportError[]): Arc[] {
+    const arcs: Arc[] = []
+    const arcElements = netElement.querySelectorAll('arc')
+
+    arcElements.forEach((arcEl, index) => {
+      const id = arcEl.getAttribute('id') || nanoid()
+      const source = arcEl.getAttribute('source')
+      const target = arcEl.getAttribute('target')
+
+      if (!source || !target) {
+        errors.push({
+          message: `Arc "${id}" missing source or target`,
+          element: 'arc',
+        })
+        return
+      }
+
+      const weight = this.getArcWeight(arcEl)
+      const waypoints = this.getArcWaypoints(arcEl)
+
+      arcs.push({
+        id,
+        sourceId: source,
+        targetId: target,
+        weight,
+        waypoints,
+      })
+    })
+
+    return arcs
+  }
+
+  /**
+   * Get text content from a selector
+   */
+  private getTextContent(element: Element, selector: string): string | null {
+    const el = element.querySelector(selector)
+    return el?.textContent?.trim() || null
+  }
+
+  /**
+   * Get position from graphics element
+   */
+  private getPosition(element: Element): Position | null {
+    const posEl = element.querySelector('graphics > position')
+    if (!posEl) return null
+
+    const x = parseFloat(posEl.getAttribute('x') || '0')
+    const y = parseFloat(posEl.getAttribute('y') || '0')
+
+    return { x, y }
+  }
+
+  /**
+   * Get initial marking (tokens) for a place
+   */
+  private getInitialMarking(placeEl: Element): number {
+    const text = this.getTextContent(placeEl, 'initialMarking > text')
+    if (text) return parseInt(text, 10) || 0
+
+    // WoPeD format
+    const wopedMarking = placeEl.querySelector('toolspecific[tool="WoPeD"] > tokens')
+    if (wopedMarking?.textContent) return parseInt(wopedMarking.textContent, 10) || 0
+
+    return 0
+  }
+
+  /**
+   * Get capacity for a place
+   */
+  private getCapacity(placeEl: Element): number {
+    const text = this.getTextContent(placeEl, 'capacity > text')
+    if (text) return parseInt(text, 10) || -1
+    return -1 // Unlimited by default
+  }
+
+  /**
+   * Get arc weight (inscription)
+   */
+  private getArcWeight(arcEl: Element): number {
+    const text = this.getTextContent(arcEl, 'inscription > text')
+    if (text) return parseInt(text, 10) || 1
+    return 1
+  }
+
+  /**
+   * Get arc waypoints from graphics
+   */
+  private getArcWaypoints(arcEl: Element): Position[] {
+    const waypoints: Position[] = []
+    const positionEls = arcEl.querySelectorAll('graphics > position')
+
+    positionEls.forEach((posEl) => {
+      const x = parseFloat(posEl.getAttribute('x') || '0')
+      const y = parseFloat(posEl.getAttribute('y') || '0')
+      waypoints.push({ x, y })
+    })
+
+    return waypoints
+  }
+
+  /**
+   * Check for WoPeD operator type in toolspecific element
+   */
+  private getWoPeDOperatorType(transEl: Element): OperatorType | null {
+    const toolspec = transEl.querySelector('toolspecific[tool="WoPeD"]')
+    if (!toolspec) return null
+
+    const operatorEl = toolspec.querySelector('operator')
+    if (!operatorEl) return null
+
+    const type = operatorEl.getAttribute('type')
+    if (!type) return null
+
+    // Map WoPeD operator IDs to our types
+    const operatorMapping: Record<string, OperatorType> = {
+      '101': OperatorType.AND_SPLIT,
+      '102': OperatorType.AND_JOIN,
+      '104': OperatorType.XOR_SPLIT,
+      '105': OperatorType.XOR_JOIN,
+      '106': OperatorType.AND_SPLIT_JOIN,
+      '107': OperatorType.XOR_SPLIT_JOIN,
+      '108': OperatorType.AND_JOIN_XOR_SPLIT,
+      '109': OperatorType.XOR_JOIN_AND_SPLIT,
+    }
+
+    return operatorMapping[type] || null
+  }
+}

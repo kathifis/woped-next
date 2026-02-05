@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { usePetriNetStore } from '@/stores/petriNet'
 import { OperatorType, OPERATOR_INFO } from '@/types/petri-net'
+import FileMenu from '@/components/file/FileMenu.vue'
 
 const store = usePetriNetStore()
 const { tool, canUndo, canRedo, viewport, selectedOperatorType } = storeToRefs(store)
@@ -137,6 +138,12 @@ const zoomPercent = () => Math.round(viewport.value.scale * 100)
 
 <template>
   <div class="editor-toolbar">
+    <!-- File menu -->
+    <FileMenu />
+
+    <!-- Separator -->
+    <div class="toolbar-separator"></div>
+
     <!-- Tool buttons -->
     <div class="toolbar-group">
       <template v-for="t in tools" :key="t.id">
