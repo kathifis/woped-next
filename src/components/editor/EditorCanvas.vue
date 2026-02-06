@@ -9,13 +9,14 @@ import { snapToGrid } from '@/utils/geometry'
 import PlaceNode from '@/components/canvas/PlaceNode.vue'
 import TransitionNode from '@/components/canvas/TransitionNode.vue'
 import OperatorNode from '@/components/canvas/OperatorNode.vue'
+import SubProcessNode from '@/components/canvas/SubProcessNode.vue'
 import ArcEdge from '@/components/canvas/ArcEdge.vue'
 import TokenAnimation from '@/components/canvas/TokenAnimation.vue'
 
 const emit = defineEmits(['resize'])
 
 const store = usePetriNetStore()
-const { places, transitions, operators, arcs, tool, viewport, arcCreation, selectedIds } = storeToRefs(store)
+const { places, transitions, operators, subProcesses, arcs, tool, viewport, arcCreation, selectedIds } = storeToRefs(store)
 
 // Config store for editor settings
 const configStore = useConfigStore()
@@ -135,6 +136,9 @@ const handleStageClick = (e) => {
       case 'operator':
         store.addOperator(snappedPos)
         break
+      case 'subprocess':
+        store.addSubProcess(snappedPos)
+        break
       case 'arc':
         if (arcCreation.value.isCreating) {
           store.cancelArcCreation()
@@ -193,10 +197,20 @@ const handleWheel = (e) => {
 const handleElementClick = (id, type, e) => {
   e.cancelBubble = true
 
-  // If token game is active and clicking on a transition/operator, fire it
-  if (isTokenGameActive.value && (type === 'transition' || type === 'operator')) {
-    if (enabledTransitions.value.includes(id)) {
-      tokenGameStore.fireTransition(id)
+  // If token game is active
+  if (isTokenGameActive.value) {
+    if (type === 'transition' || type === 'operator') {
+      if (enabledTransitions.value.includes(id)) {
+        tokenGameStore.fireTransition(id)
+      }
+      return
+    }
+    if (type === 'subprocess') {
+      // For subprocesses, use step into (single click enters the subprocess)
+      if (tokenGameStore.enabledSubprocesses.includes(id)) {
+        tokenGameStore.stepIntoSubprocess(id)
+      }
+      return
     }
     return
   }
@@ -218,6 +232,16 @@ const handleElementClick = (id, type, e) => {
       }
       break
   }
+}
+
+// Handle subprocess double-click to open it
+const handleSubProcessDblClick = (id, e) => {
+  e.cancelBubble = true
+  
+  // Don't open subprocess during token game
+  if (isTokenGameActive.value) return
+  
+  store.openSubProcess(id)
 }
 
 // Handle element drag
@@ -322,6 +346,20 @@ defineExpose({
           :is-token-game-active="isTokenGameActive"
           @click="(e) => handleElementClick(operator.id, 'operator', e)"
           @dragend="(e) => handleElementDragEnd(operator.id, e)"
+        />
+
+        <!-- Subprocesses -->
+        <SubProcessNode
+          v-for="subprocess in subProcesses"
+          :key="subprocess.id"
+          :subprocess="subprocess"
+          :is-selected="selectedIds.includes(subprocess.id)"
+          :draggable="tool === 'select' && !isTokenGameActive"
+          :is-enabled="tokenGameStore.isSubprocessEnabled(subprocess.id)"
+          :is-token-game-active="isTokenGameActive"
+          @click="(e) => handleElementClick(subprocess.id, 'subprocess', e)"
+          @dblclick="(e) => handleSubProcessDblClick(subprocess.id, e)"
+          @dragend="(e) => handleElementDragEnd(subprocess.id, e)"
         />
 
         <!-- Token Animations -->

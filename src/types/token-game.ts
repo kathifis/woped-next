@@ -40,6 +40,22 @@ export interface TokenAnimation {
 }
 
 /**
+ * State saved when stepping into a subprocess
+ */
+export interface SubprocessStackEntry {
+  /** The net ID we came from */
+  parentNetId: string
+  /** The subprocess element ID that was entered */
+  subprocessId: string
+  /** The marking of the parent net when we stepped in */
+  parentMarking: Marking
+  /** History of the parent net */
+  parentHistory: Marking[]
+  /** History index of the parent net */
+  parentHistoryIndex: number
+}
+
+/**
  * Token Game state interface
  */
 export interface TokenGameState {
@@ -53,6 +69,8 @@ export interface TokenGameState {
   historyIndex: number
   /** List of currently enabled transition IDs */
   enabledTransitions: string[]
+  /** List of enabled subprocess IDs */
+  enabledSubprocesses: string[]
   /** Delay between auto-play steps in ms */
   autoPlayDelay: number
   /** How to resolve conflicts when multiple transitions are enabled */
@@ -61,6 +79,8 @@ export interface TokenGameState {
   activeAnimations: TokenAnimation[]
   /** Whether animation is in progress */
   isAnimating: boolean
+  /** Stack of parent states when stepping into subprocesses */
+  subprocessStack: SubprocessStackEntry[]
 }
 
 /**
@@ -72,10 +92,12 @@ export const DEFAULT_TOKEN_GAME_STATE: TokenGameState = {
   history: [],
   historyIndex: -1,
   enabledTransitions: [],
+  enabledSubprocesses: [],
   autoPlayDelay: 1000,
   conflictResolution: 'manual',
   activeAnimations: [],
   isAnimating: false,
+  subprocessStack: [],
 }
 
 /**

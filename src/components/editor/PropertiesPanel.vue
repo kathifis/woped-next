@@ -84,6 +84,8 @@ const updateName = () => {
     store.updateTransition(id, { name: localName.value })
   } else if (type === 'operator') {
     store.updateOperator(id, { name: localName.value })
+  } else if (type === 'subprocess') {
+    store.updateSubProcess(id, { name: localName.value })
   }
 }
 
@@ -143,6 +145,7 @@ const stats = computed(() => ({
   places: net.value.places.length,
   transitions: net.value.transitions.length,
   operators: net.value.operators.length,
+  subprocesses: (net.value.subProcesses || []).length,
   arcs: net.value.arcs.length,
 }))
 
@@ -183,6 +186,10 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
           <div class="stat-item">
             <span class="stat-value">{{ stats.operators }}</span>
             <span class="stat-label">{{ $t('properties.operators') }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ stats.subprocesses }}</span>
+            <span class="stat-label">{{ $t('properties.subprocesses') }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-value">{{ stats.arcs }}</span>
@@ -316,6 +323,30 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
               {{ getOperatorLabel(opType) }}
             </option>
           </select>
+        </div>
+      </div>
+
+      <!-- Subprocess selected -->
+      <div v-else-if="elementType === 'subprocess'" class="property-section">
+        <h4>{{ $t('properties.subprocess') }}</h4>
+
+        <div class="property-row">
+          <label>{{ $t('properties.name') }}</label>
+          <input
+            v-model="localName"
+            type="text"
+            @change="updateName"
+            @blur="updateName"
+          />
+        </div>
+
+        <div class="property-row">
+          <button
+            class="open-subprocess-btn"
+            @click="store.openSubProcess(selectedIds[0])"
+          >
+            {{ $t('subprocess.open') }}
+          </button>
         </div>
       </div>
 
@@ -477,5 +508,22 @@ const getOperatorLabel = (type) => OPERATOR_INFO[type]?.label || type
 
 .delete-btn:hover {
   background-color: #dc2626;
+}
+
+.open-subprocess-btn {
+  width: 100%;
+  padding: 10px 16px;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.open-subprocess-btn:hover {
+  background-color: #2563eb;
 }
 </style>

@@ -41,7 +41,7 @@ const colors = computed(() => {
     labelFill: dark ? '#e5e7eb' : '#374151',
   }
 })
-const { places, transitions, operators } = storeToRefs(store)
+const { places, transitions, operators, subProcesses } = storeToRefs(store)
 
 // Get routing mode (default to 'direct')
 const routingMode = computed(() => props.arc.routingMode || 'direct')
@@ -57,6 +57,10 @@ const sourceElement = computed(() => {
   // Operators behave like transitions for arc connections
   const operator = operators.value.find((o) => o.id === props.arc.sourceId)
   if (operator) return { position: operator.position, type: 'transition' }
+
+  // Subprocesses behave like transitions for arc connections
+  const subprocess = subProcesses.value.find((s) => s.id === props.arc.sourceId)
+  if (subprocess) return { position: subprocess.position, type: 'subprocess' }
 
   return null
 })
@@ -76,6 +80,10 @@ const targetElement = computed(() => {
   // Operators behave like transitions for arc connections
   const operator = operators.value.find((o) => o.id === props.arc.targetId)
   if (operator) return { position: operator.position, type: 'transition' }
+
+  // Subprocesses behave like transitions for arc connections
+  const subprocess = subProcesses.value.find((s) => s.id === props.arc.targetId)
+  if (subprocess) return { position: subprocess.position, type: 'subprocess' }
 
   return null
 })

@@ -75,13 +75,13 @@ export function pointOnRectangle(
 }
 
 /**
- * Calculate arc endpoints between a place and transition
+ * Calculate arc endpoints between elements (place, transition, subprocess)
  */
 export function calculateArcEndpoints(
   sourcePos: Position,
   targetPos: Position,
-  sourceType: 'place' | 'transition',
-  targetType: 'place' | 'transition'
+  sourceType: 'place' | 'transition' | 'subprocess',
+  targetType: 'place' | 'transition' | 'subprocess'
 ): { start: Position; end: Position } {
   const ang = angle(sourcePos, targetPos)
   const reverseAng = angle(targetPos, sourcePos)
@@ -91,6 +91,13 @@ export function calculateArcEndpoints(
 
   if (sourceType === 'place') {
     start = pointOnCircle(sourcePos, VISUAL.place.radius, ang)
+  } else if (sourceType === 'subprocess') {
+    start = pointOnRectangle(
+      sourcePos,
+      VISUAL.subprocess.width,
+      VISUAL.subprocess.height,
+      ang
+    )
   } else {
     start = pointOnRectangle(
       sourcePos,
@@ -102,6 +109,13 @@ export function calculateArcEndpoints(
 
   if (targetType === 'place') {
     end = pointOnCircle(targetPos, VISUAL.place.radius, reverseAng)
+  } else if (targetType === 'subprocess') {
+    end = pointOnRectangle(
+      targetPos,
+      VISUAL.subprocess.width,
+      VISUAL.subprocess.height,
+      reverseAng
+    )
   } else {
     end = pointOnRectangle(
       targetPos,

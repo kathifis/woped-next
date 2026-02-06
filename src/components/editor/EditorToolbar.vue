@@ -25,6 +25,7 @@ const tools = computed(() => [
   { id: 'place', label: t('toolbar.place'), shortcut: 'P', icon: '○' },
   { id: 'transition', label: t('toolbar.transition'), shortcut: 'T', icon: '□' },
   { id: 'operator', label: t('operators.title'), shortcut: 'O', icon: '◇', hasDropdown: true },
+  { id: 'subprocess', label: t('subprocess.title'), shortcut: 'S', icon: '⊞' },
   { id: 'arc', label: t('toolbar.arc'), shortcut: 'A', icon: '→' },
   { id: 'delete', label: t('toolbar.delete'), shortcut: 'D', icon: '✕' },
 ])
@@ -93,6 +94,10 @@ const handleKeydown = (e) => {
     case 'o':
       store.setTool('operator')
       showOperatorMenu.value = !showOperatorMenu.value
+      break
+    case 's':
+      store.setTool('subprocess')
+      showOperatorMenu.value = false
       break
     case 'a':
       store.setTool('arc')

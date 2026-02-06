@@ -5,6 +5,7 @@ import type {
   Place,
   Transition,
   OperatorTransition,
+  SubProcess,
   Arc,
   Position,
   Tool,
@@ -15,89 +16,130 @@ import type {
 import { DEFAULTS, OperatorType } from '@/types/petri-net'
 
 interface PetriNetState {
-  net: PetriNet
+  // Multi-net support
+  nets: Record<string, PetriNet>
+  activeNetId: string
+  breadcrumb: string[]
+  // Legacy single net getter (computed from activeNetId)
   selectedIds: string[]
   tool: Tool
   selectedOperatorType: OperatorType
   arcCreation: ArcCreationState
   viewport: ViewportState
-  history: PetriNet[]
+  history: Record<string, PetriNet>[]
   historyIndex: number
   maxHistorySize: number
 }
 
+const createEmptyNet = (id?: string, name?: string, parentId?: string): PetriNet => ({
+  id: id || nanoid(),
+  name: name || (parentId ? 'Subprocess' : 'Main'),
+  parentId,
+  places: [],
+  transitions: [],
+  operators: [],
+  subProcesses: [],
+  arcs: [],
+})
+
 export const usePetriNetStore = defineStore('petriNet', {
-  state: (): PetriNetState => ({
-    net: {
-      id: nanoid(),
-      name: 'New Petri Net',
-      places: [],
-      transitions: [],
-      operators: [],
-      arcs: [],
-    },
-    selectedIds: [],
-    tool: 'select',
-    selectedOperatorType: OperatorType.AND_SPLIT,
-    arcCreation: {
-      isCreating: false,
-      sourceId: null,
-      sourceType: null,
-      tempEndPosition: null,
-    },
-    viewport: {
-      x: 0,
-      y: 0,
-      scale: 1,
-    },
-    history: [],
-    historyIndex: -1,
-    maxHistorySize: 50,
-  }),
+  state: (): PetriNetState => {
+    const mainNetId = nanoid()
+    return {
+      nets: {
+        [mainNetId]: createEmptyNet(mainNetId, 'Main'),
+      },
+      activeNetId: mainNetId,
+      breadcrumb: [mainNetId],
+      selectedIds: [],
+      tool: 'select',
+      selectedOperatorType: OperatorType.AND_SPLIT,
+      arcCreation: {
+        isCreating: false,
+        sourceId: null,
+        sourceType: null,
+        tempEndPosition: null,
+      },
+      viewport: {
+        x: 0,
+        y: 0,
+        scale: 1,
+      },
+      history: [],
+      historyIndex: -1,
+      maxHistorySize: 50,
+    }
+  },
 
   getters: {
     /**
-     * Get all places
+     * Get the active/current net
      */
-    places: (state): Place[] => state.net.places,
+    net: (state): PetriNet => state.nets[state.activeNetId],
 
     /**
-     * Get all transitions
+     * Get all places in active net
      */
-    transitions: (state): Transition[] => state.net.transitions,
+    places(): Place[] {
+      return this.net.places
+    },
 
     /**
-     * Get all operators
+     * Get all transitions in active net
      */
-    operators: (state): OperatorTransition[] => state.net.operators,
+    transitions(): Transition[] {
+      return this.net.transitions
+    },
 
     /**
-     * Get all arcs
+     * Get all operators in active net
      */
-    arcs: (state): Arc[] => state.net.arcs,
+    operators(): OperatorTransition[] {
+      return this.net.operators
+    },
+
+    /**
+     * Get all subprocesses in active net
+     */
+    subProcesses(): SubProcess[] {
+      return this.net.subProcesses || []
+    },
+
+    /**
+     * Get all arcs in active net
+     */
+    arcs(): Arc[] {
+      return this.net.arcs
+    },
 
     /**
      * Get selected elements
      */
-    selectedElements: (state): PetriNetElement[] => {
+    selectedElements(state): PetriNetElement[] {
+      const net = this.net
       const elements: PetriNetElement[] = []
       for (const id of state.selectedIds) {
-        const place = state.net.places.find((p) => p.id === id)
+        const place = net.places.find((p) => p.id === id)
         if (place) {
           elements.push(place)
           continue
         }
-        const transition = state.net.transitions.find((t) => t.id === id)
+        const transition = net.transitions.find((t) => t.id === id)
         if (transition) {
           elements.push(transition)
           continue
         }
-        const operator = state.net.operators.find((o) => o.id === id)
+        const operator = net.operators.find((o) => o.id === id)
         if (operator) {
           elements.push(operator)
           continue
         }
-        const arc = state.net.arcs.find((a) => a.id === id)
+        const subprocess = (net.subProcesses || []).find((s) => s.id === id)
+        if (subprocess) {
+          elements.push(subprocess)
+          continue
+        }
+        const arc = net.arcs.find((a) => a.id === id)
         if (arc) {
           elements.push(arc)
         }
@@ -116,29 +158,33 @@ export const usePetriNetStore = defineStore('petriNet', {
     /**
      * Get element by ID
      */
-    getElementById:
-      (state) =>
-      (id: string): PetriNetElement | undefined => {
+    getElementById() {
+      const net = this.net
+      return (id: string): PetriNetElement | undefined => {
         return (
-          state.net.places.find((p) => p.id === id) ||
-          state.net.transitions.find((t) => t.id === id) ||
-          state.net.operators.find((o) => o.id === id) ||
-          state.net.arcs.find((a) => a.id === id)
+          net.places.find((p) => p.id === id) ||
+          net.transitions.find((t) => t.id === id) ||
+          net.operators.find((o) => o.id === id) ||
+          (net.subProcesses || []).find((s) => s.id === id) ||
+          net.arcs.find((a) => a.id === id)
         )
-      },
+      }
+    },
 
     /**
      * Get element type by ID
      */
-    getElementType:
-      (state) =>
-      (id: string): 'place' | 'transition' | 'operator' | 'arc' | null => {
-        if (state.net.places.find((p) => p.id === id)) return 'place'
-        if (state.net.transitions.find((t) => t.id === id)) return 'transition'
-        if (state.net.operators.find((o) => o.id === id)) return 'operator'
-        if (state.net.arcs.find((a) => a.id === id)) return 'arc'
+    getElementType() {
+      const net = this.net
+      return (id: string): 'place' | 'transition' | 'operator' | 'subprocess' | 'arc' | null => {
+        if (net.places.find((p) => p.id === id)) return 'place'
+        if (net.transitions.find((t) => t.id === id)) return 'transition'
+        if (net.operators.find((o) => o.id === id)) return 'operator'
+        if ((net.subProcesses || []).find((s) => s.id === id)) return 'subprocess'
+        if (net.arcs.find((a) => a.id === id)) return 'arc'
         return null
-      },
+      }
+    },
 
     /**
      * Check if undo is available
@@ -153,13 +199,41 @@ export const usePetriNetStore = defineStore('petriNet', {
     /**
      * Get arcs connected to an element
      */
-    getConnectedArcs:
-      (state) =>
-      (elementId: string): Arc[] => {
-        return state.net.arcs.filter(
+    getConnectedArcs() {
+      const net = this.net
+      return (elementId: string): Arc[] => {
+        return net.arcs.filter(
           (arc) => arc.sourceId === elementId || arc.targetId === elementId
         )
-      },
+      }
+    },
+
+    /**
+     * Check if we can navigate back (in subprocess hierarchy)
+     */
+    canGoBack: (state): boolean => state.breadcrumb.length > 1,
+
+    /**
+     * Get the current navigation path as net names
+     */
+    currentPath(state): string[] {
+      return state.breadcrumb.map((id) => state.nets[id]?.name || 'Unknown')
+    },
+
+    /**
+     * Get breadcrumb items for navigation
+     */
+    breadcrumbItems(state): Array<{ id: string; name: string }> {
+      return state.breadcrumb.map((id) => ({
+        id,
+        name: state.nets[id]?.name || 'Unknown',
+      }))
+    },
+
+    /**
+     * Check if currently viewing a subprocess
+     */
+    isInSubProcess: (state): boolean => state.breadcrumb.length > 1,
   },
 
   actions: {
@@ -174,8 +248,8 @@ export const usePetriNetStore = defineStore('petriNet', {
         this.history = this.history.slice(0, this.historyIndex + 1)
       }
 
-      // Deep clone the current net
-      const snapshot = JSON.parse(JSON.stringify(this.net))
+      // Deep clone all nets
+      const snapshot = JSON.parse(JSON.stringify(this.nets))
       this.history.push(snapshot)
 
       // Limit history size
@@ -192,7 +266,7 @@ export const usePetriNetStore = defineStore('petriNet', {
     undo() {
       if (this.canUndo) {
         this.historyIndex--
-        this.net = JSON.parse(JSON.stringify(this.history[this.historyIndex]))
+        this.nets = JSON.parse(JSON.stringify(this.history[this.historyIndex]))
         this.clearSelection()
       }
     },
@@ -203,7 +277,7 @@ export const usePetriNetStore = defineStore('petriNet', {
     redo() {
       if (this.canRedo) {
         this.historyIndex++
-        this.net = JSON.parse(JSON.stringify(this.history[this.historyIndex]))
+        this.nets = JSON.parse(JSON.stringify(this.history[this.historyIndex]))
         this.clearSelection()
       }
     },
@@ -215,16 +289,17 @@ export const usePetriNetStore = defineStore('petriNet', {
      */
     addPlace(position: Position, name?: string): Place {
       this.saveToHistory()
+      const net = this.nets[this.activeNetId]
 
       const place: Place = {
         id: nanoid(),
-        name: name || `P${this.net.places.length + 1}`,
+        name: name || `P${net.places.length + 1}`,
         position,
         tokens: DEFAULTS.place.tokens,
         capacity: DEFAULTS.place.capacity,
       }
 
-      this.net.places.push(place)
+      net.places.push(place)
       return place
     },
 
@@ -232,7 +307,8 @@ export const usePetriNetStore = defineStore('petriNet', {
      * Update a place
      */
     updatePlace(id: string, updates: Partial<Omit<Place, 'id'>>) {
-      const place = this.net.places.find((p) => p.id === id)
+      const net = this.nets[this.activeNetId]
+      const place = net.places.find((p) => p.id === id)
       if (place) {
         this.saveToHistory()
         Object.assign(place, updates)
@@ -246,14 +322,15 @@ export const usePetriNetStore = defineStore('petriNet', {
      */
     addTransition(position: Position, name?: string): Transition {
       this.saveToHistory()
+      const net = this.nets[this.activeNetId]
 
       const transition: Transition = {
         id: nanoid(),
-        name: name || `T${this.net.transitions.length + 1}`,
+        name: name || `T${net.transitions.length + 1}`,
         position,
       }
 
-      this.net.transitions.push(transition)
+      net.transitions.push(transition)
       return transition
     },
 
@@ -261,7 +338,8 @@ export const usePetriNetStore = defineStore('petriNet', {
      * Update a transition
      */
     updateTransition(id: string, updates: Partial<Omit<Transition, 'id'>>) {
-      const transition = this.net.transitions.find((t) => t.id === id)
+      const net = this.nets[this.activeNetId]
+      const transition = net.transitions.find((t) => t.id === id)
       if (transition) {
         this.saveToHistory()
         Object.assign(transition, updates)
@@ -282,16 +360,17 @@ export const usePetriNetStore = defineStore('petriNet', {
      */
     addOperator(position: Position, operatorType?: OperatorType, name?: string): OperatorTransition {
       this.saveToHistory()
+      const net = this.nets[this.activeNetId]
 
       const type = operatorType || this.selectedOperatorType
       const operator: OperatorTransition = {
         id: nanoid(),
-        name: name || `Op${this.net.operators.length + 1}`,
+        name: name || `Op${net.operators.length + 1}`,
         position,
         operatorType: type,
       }
 
-      this.net.operators.push(operator)
+      net.operators.push(operator)
       return operator
     },
 
@@ -299,10 +378,105 @@ export const usePetriNetStore = defineStore('petriNet', {
      * Update an operator
      */
     updateOperator(id: string, updates: Partial<Omit<OperatorTransition, 'id'>>) {
-      const operator = this.net.operators.find((o) => o.id === id)
+      const net = this.nets[this.activeNetId]
+      const operator = net.operators.find((o) => o.id === id)
       if (operator) {
         this.saveToHistory()
         Object.assign(operator, updates)
+      }
+    },
+
+    // ========== SubProcess Operations ==========
+
+    /**
+     * Add a new subprocess
+     */
+    addSubProcess(position: Position, name?: string): SubProcess {
+      this.saveToHistory()
+      const net = this.nets[this.activeNetId]
+
+      // Ensure subProcesses array exists
+      if (!net.subProcesses) {
+        net.subProcesses = []
+      }
+
+      // Generate default name
+      const defaultName = name || `Sub ${net.subProcesses.length + 1}`
+
+      // Create the sub-net with the same name
+      const subNetId = nanoid()
+      const subNet = createEmptyNet(subNetId, defaultName, this.activeNetId)
+      this.nets[subNetId] = subNet
+
+      // Create the subprocess element
+      const subprocess: SubProcess = {
+        id: nanoid(),
+        name: defaultName,
+        position,
+        subNetId,
+        collapsed: true,
+      }
+
+      net.subProcesses.push(subprocess)
+      return subprocess
+    },
+
+    /**
+     * Update a subprocess
+     */
+    updateSubProcess(id: string, updates: Partial<Omit<SubProcess, 'id'>>) {
+      const net = this.nets[this.activeNetId]
+      const subprocess = (net.subProcesses || []).find((s) => s.id === id)
+      if (subprocess) {
+        this.saveToHistory()
+        Object.assign(subprocess, updates)
+        
+        // Sync name to subnet if name was updated
+        if (updates.name && this.nets[subprocess.subNetId]) {
+          this.nets[subprocess.subNetId].name = updates.name
+        }
+      }
+    },
+
+    /**
+     * Open a subprocess (navigate into it)
+     */
+    openSubProcess(subProcessId: string) {
+      const net = this.nets[this.activeNetId]
+      const subprocess = (net.subProcesses || []).find((s) => s.id === subProcessId)
+      if (subprocess && this.nets[subprocess.subNetId]) {
+        // Add the subprocess's subnet to the breadcrumb path
+        this.breadcrumb.push(subprocess.subNetId)
+        this.activeNetId = subprocess.subNetId
+        this.clearSelection()
+        // Reset viewport for new net
+        this.viewport = { x: 0, y: 0, scale: 1 }
+      }
+    },
+
+    /**
+     * Navigate back to parent net
+     */
+    goBack() {
+      if (this.breadcrumb.length > 1) {
+        // Remove current net from breadcrumb
+        this.breadcrumb.pop()
+        // Set active to the new last item (parent)
+        this.activeNetId = this.breadcrumb[this.breadcrumb.length - 1]
+        this.clearSelection()
+      }
+    },
+
+    /**
+     * Navigate to a specific net in the breadcrumb
+     */
+    navigateTo(netId: string) {
+      const index = this.breadcrumb.indexOf(netId)
+      if (index !== -1) {
+        // Remove all entries after this one
+        this.breadcrumb = this.breadcrumb.slice(0, index + 1)
+        this.activeNetId = netId
+        this.clearSelection()
       }
     },
 
@@ -312,6 +486,8 @@ export const usePetriNetStore = defineStore('petriNet', {
      * Add a new arc
      */
     addArc(sourceId: string, targetId: string): Arc | null {
+      const net = this.nets[this.activeNetId]
+      
       // Validate: source and target must be different types
       const sourceType = this.getElementType(sourceId)
       const targetType = this.getElementType(targetId)
@@ -319,15 +495,15 @@ export const usePetriNetStore = defineStore('petriNet', {
       if (!sourceType || !targetType) return null
       if (sourceType === 'arc' || targetType === 'arc') return null
 
-      // Normalize types: operators behave like transitions
-      const normalizedSource = sourceType === 'operator' ? 'transition' : sourceType
-      const normalizedTarget = targetType === 'operator' ? 'transition' : targetType
+      // Normalize types: operators and subprocesses behave like transitions
+      const normalizedSource = (sourceType === 'operator' || sourceType === 'subprocess') ? 'transition' : sourceType
+      const normalizedTarget = (targetType === 'operator' || targetType === 'subprocess') ? 'transition' : targetType
 
-      // Source and target must be different types (place <-> transition/operator)
+      // Source and target must be different types (place <-> transition/operator/subprocess)
       if (normalizedSource === normalizedTarget) return null
 
       // Check if arc already exists
-      const exists = this.net.arcs.some(
+      const exists = net.arcs.some(
         (a) => a.sourceId === sourceId && a.targetId === targetId
       )
       if (exists) return null
@@ -342,7 +518,7 @@ export const usePetriNetStore = defineStore('petriNet', {
         waypoints: [],
       }
 
-      this.net.arcs.push(arc)
+      net.arcs.push(arc)
       return arc
     },
 
@@ -350,7 +526,8 @@ export const usePetriNetStore = defineStore('petriNet', {
      * Update an arc
      */
     updateArc(id: string, updates: Partial<Omit<Arc, 'id'>>) {
-      const arc = this.net.arcs.find((a) => a.id === id)
+      const net = this.nets[this.activeNetId]
+      const arc = net.arcs.find((a) => a.id === id)
       if (arc) {
         this.saveToHistory()
         Object.assign(arc, updates)
@@ -364,13 +541,14 @@ export const usePetriNetStore = defineStore('petriNet', {
      */
     deleteElement(id: string) {
       this.saveToHistory()
+      const net = this.nets[this.activeNetId]
 
       // Remove from places
-      const placeIndex = this.net.places.findIndex((p) => p.id === id)
+      const placeIndex = net.places.findIndex((p) => p.id === id)
       if (placeIndex !== -1) {
-        this.net.places.splice(placeIndex, 1)
+        net.places.splice(placeIndex, 1)
         // Remove connected arcs
-        this.net.arcs = this.net.arcs.filter(
+        net.arcs = net.arcs.filter(
           (a) => a.sourceId !== id && a.targetId !== id
         )
         this.selectedIds = this.selectedIds.filter((sid) => sid !== id)
@@ -378,11 +556,11 @@ export const usePetriNetStore = defineStore('petriNet', {
       }
 
       // Remove from transitions
-      const transIndex = this.net.transitions.findIndex((t) => t.id === id)
+      const transIndex = net.transitions.findIndex((t) => t.id === id)
       if (transIndex !== -1) {
-        this.net.transitions.splice(transIndex, 1)
+        net.transitions.splice(transIndex, 1)
         // Remove connected arcs
-        this.net.arcs = this.net.arcs.filter(
+        net.arcs = net.arcs.filter(
           (a) => a.sourceId !== id && a.targetId !== id
         )
         this.selectedIds = this.selectedIds.filter((sid) => sid !== id)
@@ -390,21 +568,38 @@ export const usePetriNetStore = defineStore('petriNet', {
       }
 
       // Remove from operators
-      const opIndex = this.net.operators.findIndex((o) => o.id === id)
+      const opIndex = net.operators.findIndex((o) => o.id === id)
       if (opIndex !== -1) {
-        this.net.operators.splice(opIndex, 1)
+        net.operators.splice(opIndex, 1)
         // Remove connected arcs
-        this.net.arcs = this.net.arcs.filter(
+        net.arcs = net.arcs.filter(
           (a) => a.sourceId !== id && a.targetId !== id
         )
         this.selectedIds = this.selectedIds.filter((sid) => sid !== id)
         return
       }
 
+      // Remove from subprocesses
+      if (net.subProcesses) {
+        const subIndex = net.subProcesses.findIndex((s) => s.id === id)
+        if (subIndex !== -1) {
+          const subprocess = net.subProcesses[subIndex]
+          // Also delete the sub-net
+          delete this.nets[subprocess.subNetId]
+          net.subProcesses.splice(subIndex, 1)
+          // Remove connected arcs
+          net.arcs = net.arcs.filter(
+            (a) => a.sourceId !== id && a.targetId !== id
+          )
+          this.selectedIds = this.selectedIds.filter((sid) => sid !== id)
+          return
+        }
+      }
+
       // Remove from arcs
-      const arcIndex = this.net.arcs.findIndex((a) => a.id === id)
+      const arcIndex = net.arcs.findIndex((a) => a.id === id)
       if (arcIndex !== -1) {
-        this.net.arcs.splice(arcIndex, 1)
+        net.arcs.splice(arcIndex, 1)
         this.selectedIds = this.selectedIds.filter((sid) => sid !== id)
       }
     },
@@ -416,42 +611,57 @@ export const usePetriNetStore = defineStore('petriNet', {
       if (this.selectedIds.length === 0) return
 
       this.saveToHistory()
+      const net = this.nets[this.activeNetId]
 
       for (const id of [...this.selectedIds]) {
         // Remove from places
-        const placeIndex = this.net.places.findIndex((p) => p.id === id)
+        const placeIndex = net.places.findIndex((p) => p.id === id)
         if (placeIndex !== -1) {
-          this.net.places.splice(placeIndex, 1)
-          this.net.arcs = this.net.arcs.filter(
+          net.places.splice(placeIndex, 1)
+          net.arcs = net.arcs.filter(
             (a) => a.sourceId !== id && a.targetId !== id
           )
           continue
         }
 
         // Remove from transitions
-        const transIndex = this.net.transitions.findIndex((t) => t.id === id)
+        const transIndex = net.transitions.findIndex((t) => t.id === id)
         if (transIndex !== -1) {
-          this.net.transitions.splice(transIndex, 1)
-          this.net.arcs = this.net.arcs.filter(
+          net.transitions.splice(transIndex, 1)
+          net.arcs = net.arcs.filter(
             (a) => a.sourceId !== id && a.targetId !== id
           )
           continue
         }
 
         // Remove from operators
-        const opIndex = this.net.operators.findIndex((o) => o.id === id)
+        const opIndex = net.operators.findIndex((o) => o.id === id)
         if (opIndex !== -1) {
-          this.net.operators.splice(opIndex, 1)
-          this.net.arcs = this.net.arcs.filter(
+          net.operators.splice(opIndex, 1)
+          net.arcs = net.arcs.filter(
             (a) => a.sourceId !== id && a.targetId !== id
           )
           continue
         }
 
+        // Remove from subprocesses
+        if (net.subProcesses) {
+          const subIndex = net.subProcesses.findIndex((s) => s.id === id)
+          if (subIndex !== -1) {
+            const subprocess = net.subProcesses[subIndex]
+            delete this.nets[subprocess.subNetId]
+            net.subProcesses.splice(subIndex, 1)
+            net.arcs = net.arcs.filter(
+              (a) => a.sourceId !== id && a.targetId !== id
+            )
+            continue
+          }
+        }
+
         // Remove from arcs
-        const arcIndex = this.net.arcs.findIndex((a) => a.id === id)
+        const arcIndex = net.arcs.findIndex((a) => a.id === id)
         if (arcIndex !== -1) {
-          this.net.arcs.splice(arcIndex, 1)
+          net.arcs.splice(arcIndex, 1)
         }
       }
 
@@ -507,11 +717,11 @@ export const usePetriNetStore = defineStore('petriNet', {
     /**
      * Start creating an arc from a source element
      */
-    startArcCreation(sourceId: string, sourceType: 'place' | 'transition' | 'operator') {
+    startArcCreation(sourceId: string, sourceType: 'place' | 'transition' | 'operator' | 'subprocess') {
       this.arcCreation = {
         isCreating: true,
         sourceId,
-        sourceType: sourceType === 'operator' ? 'transition' : sourceType,
+        sourceType: (sourceType === 'operator' || sourceType === 'subprocess') ? 'transition' : sourceType,
         tempEndPosition: null,
       }
     },
@@ -601,21 +811,31 @@ export const usePetriNetStore = defineStore('petriNet', {
      * Move an element to a new position
      */
     moveElement(id: string, position: Position) {
-      const place = this.net.places.find((p) => p.id === id)
+      const net = this.nets[this.activeNetId]
+      
+      const place = net.places.find((p) => p.id === id)
       if (place) {
         place.position = position
         return
       }
 
-      const transition = this.net.transitions.find((t) => t.id === id)
+      const transition = net.transitions.find((t) => t.id === id)
       if (transition) {
         transition.position = position
         return
       }
 
-      const operator = this.net.operators.find((o) => o.id === id)
+      const operator = net.operators.find((o) => o.id === id)
       if (operator) {
         operator.position = position
+        return
+      }
+
+      if (net.subProcesses) {
+        const subprocess = net.subProcesses.find((s) => s.id === id)
+        if (subprocess) {
+          subprocess.position = position
+        }
       }
     },
 
@@ -633,14 +853,12 @@ export const usePetriNetStore = defineStore('petriNet', {
      * Create a new empty net
      */
     newNet() {
-      this.net = {
-        id: nanoid(),
-        name: 'New Petri Net',
-        places: [],
-        transitions: [],
-        operators: [],
-        arcs: [],
+      const mainNetId = nanoid()
+      this.nets = {
+        [mainNetId]: createEmptyNet(mainNetId, 'Main'),
       }
+      this.activeNetId = mainNetId
+      this.breadcrumb = [mainNetId]
       this.selectedIds = []
       this.history = []
       this.historyIndex = -1
@@ -648,14 +866,56 @@ export const usePetriNetStore = defineStore('petriNet', {
     },
 
     /**
-     * Load a net from data
+     * Load a net from data (supports legacy single-net and new multi-net format)
      */
     loadNet(net: PetriNet) {
-      this.net = JSON.parse(JSON.stringify(net))
+      // Ensure the net has subProcesses array
+      if (!net.subProcesses) {
+        net.subProcesses = []
+      }
+      
+      const loadedNet = JSON.parse(JSON.stringify(net)) as PetriNet
+      this.nets = { [loadedNet.id]: loadedNet }
+      this.activeNetId = loadedNet.id
+      this.breadcrumb = [loadedNet.id]
       this.selectedIds = []
       this.history = []
       this.historyIndex = -1
       this.saveToHistory()
+    },
+
+    /**
+     * Load multiple nets (for files with subprocesses)
+     */
+    loadNets(nets: Record<string, PetriNet>, mainNetId: string) {
+      this.nets = JSON.parse(JSON.stringify(nets))
+      this.activeNetId = mainNetId
+      this.breadcrumb = [mainNetId]
+      this.selectedIds = []
+      this.history = []
+      this.historyIndex = -1
+      this.saveToHistory()
+    },
+
+    /**
+     * Get a net by ID
+     */
+    getNetById(netId: string): PetriNet | undefined {
+      return this.nets[netId]
+    },
+
+    /**
+     * Get all nets (for export)
+     */
+    getAllNets(): Record<string, PetriNet> {
+      return this.nets
+    },
+
+    /**
+     * Get the main (root) net ID
+     */
+    getMainNetId(): string {
+      return this.breadcrumb[0]
     },
 
     /**

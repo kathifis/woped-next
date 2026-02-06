@@ -7,8 +7,8 @@ import type { Position, ArcRoutingMode } from '@/types/petri-net'
 export function orthogonalRoute(
   source: Position,
   target: Position,
-  sourceType: 'place' | 'transition',
-  targetType: 'place' | 'transition'
+  sourceType: 'place' | 'transition' | 'subprocess',
+  targetType: 'place' | 'transition' | 'subprocess'
 ): Position[] {
   const dx = target.x - source.x
   const dy = target.y - source.y

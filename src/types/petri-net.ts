@@ -49,10 +49,25 @@ export interface OperatorTransition extends Transition {
 }
 
 /**
+ * SubProcess - a transition that contains a nested Petri net
+ */
+export interface SubProcess extends Transition {
+  subNetId: string
+  collapsed: boolean
+}
+
+/**
  * Check if a transition is an operator
  */
 export function isOperator(transition: Transition): transition is OperatorTransition {
   return 'operatorType' in transition
+}
+
+/**
+ * Check if a transition is a subprocess
+ */
+export function isSubProcess(transition: Transition): transition is SubProcess {
+  return 'subNetId' in transition
 }
 
 /**
@@ -125,26 +140,28 @@ export interface Arc {
 export interface PetriNet {
   id: string
   name: string
+  parentId?: string  // For subprocess hierarchy
   places: Place[]
   transitions: Transition[]
   operators: OperatorTransition[]
+  subProcesses: SubProcess[]
   arcs: Arc[]
 }
 
 /**
  * Available editor tools
  */
-export type Tool = 'select' | 'place' | 'transition' | 'operator' | 'arc' | 'delete'
+export type Tool = 'select' | 'place' | 'transition' | 'operator' | 'subprocess' | 'arc' | 'delete'
 
 /**
  * Element types in the Petri net
  */
-export type ElementType = 'place' | 'transition' | 'operator' | 'arc'
+export type ElementType = 'place' | 'transition' | 'operator' | 'subprocess' | 'arc'
 
 /**
  * Union type for any selectable element
  */
-export type PetriNetElement = Place | Transition | OperatorTransition | Arc
+export type PetriNetElement = Place | Transition | OperatorTransition | SubProcess | Arc
 
 /**
  * Editor state for arc creation
@@ -204,6 +221,13 @@ export const VISUAL = {
     size: 40, // Size of the operator shape
     strokeWidth: 2,
     innerOffset: 8, // Offset for inner shape in combined operators
+  },
+  subprocess: {
+    width: 80,
+    height: 50,
+    strokeWidth: 2,
+    innerOffset: 4, // Offset for double border
+    cornerRadius: 6,
   },
   arc: {
     strokeWidth: 2,

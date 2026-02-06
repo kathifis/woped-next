@@ -9,6 +9,7 @@ import EditorCanvas from './EditorCanvas.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import ViewToolbar from './ViewToolbar.vue'
 import OverviewPanel from './OverviewPanel.vue'
+import BreadcrumbNav from './BreadcrumbNav.vue'
 import TokenGameControls from '@/components/token-game/TokenGameControls.vue'
 import AnalysisPanel from '@/components/analysis/AnalysisPanel.vue'
 
@@ -80,6 +81,7 @@ onMounted(() => {
 <template>
   <div class="petri-net-editor">
     <EditorToolbar />
+    <BreadcrumbNav />
     <div class="editor-main">
       <div class="canvas-container">
         <EditorCanvas 

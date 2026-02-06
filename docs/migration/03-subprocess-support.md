@@ -235,47 +235,62 @@ graph LR
 
 ```mermaid
 flowchart TD
-    S1[1. Multi-Net Store] --> S2[2. SubProcess Model]
-    S2 --> S3[3. Navigation System]
-    S3 --> S4[4. Breadcrumb Component]
-    S4 --> S5[5. SubProcess Node]
+    S1[1. Multi-Net Store ✅] --> S2[2. SubProcess Model ✅]
+    S2 --> S3[3. Navigation System ✅]
+    S3 --> S4[4. Breadcrumb Component ✅]
+    S4 --> S5[5. SubProcess Node ✅]
     S5 --> S6[6. Preview Rendering]
-    S6 --> S7[7. Token Game Integration]
+    S6 --> S7[7. Token Game Integration ✅]
     S7 --> S8[8. Import/Export]
 ```
 
 ### Detaillierte Schritte
 
-1. **Multi-Net Store**
-   - Map für mehrere PetriNets
-   - Parent-Child Beziehungen
+1. **Multi-Net Store** ✅
+   - `nets: Record<string, PetriNet>` für mehrere PetriNets
+   - `parentId` für Parent-Child Beziehungen
+   - `breadcrumb` Array für Navigation-History
 
-2. **SubProcess Model**
-   - Erweitert Transition
-   - Referenz auf SubNet
+2. **SubProcess Model** ✅
+   - `SubProcess` Interface erweitert Transition
+   - `subNetId` Referenz auf SubNet
+   - `collapsed` für Darstellungsmodus
 
-3. **Navigation System**
-   - Breadcrumb State
-   - History Management
+3. **Navigation System** ✅
+   - `openSubProcess()` Action
+   - `goBack()` und `navigateTo()` Actions
+   - Breadcrumb State Management
 
-4. **Breadcrumb Component**
-   - Klickbare Pfadanzeige
-   - Zurück-Navigation
+4. **Breadcrumb Component** ✅
+   - `BreadcrumbNav.vue` mit klickbarer Pfadanzeige
+   - Zurück-Button
+   - Aktueller Netz-Name Anzeige
 
-5. **SubProcess Node**
-   - Doppelte Umrandung
-   - Doppelklick zum Öffnen
+5. **SubProcess Node** ✅
+   - `SubProcessNode.vue` mit doppelter Umrandung
+   - Doppelklick zum Öffnen im Editor-Modus
+   - Single-Click im Token Game für Step-Into
+   - Enabled-Highlighting im Token Game
 
-6. **Preview Rendering**
-   - Miniatur-Ansicht
+6. **Preview Rendering** ⏳
+   - Miniatur-Ansicht (TODO)
    - Optional aktivierbar
 
-7. **Token Game Integration**
-   - Step Into / Step Out
-   - Token-Weitergabe
+7. **Token Game Integration** ✅
+   - **Step Into**: Klick auf aktivierten Subprocess
+     - Tokens von Input-Places konsumiert
+     - Navigation in Subprocess
+     - Start-Places erhalten Token
+   - **Step Out**: Button in TokenGameControls
+     - Prüft ob End-Places Tokens haben
+     - Tokens von End-Places konsumiert
+     - Navigation zurück zum Parent
+     - Output-Places erhalten Token
+   - Subprocess-Stack für verschachtelte Navigation
+   - UI-Indikator für aktuellen Subprocess-Kontext
 
-8. **Import/Export**
-   - Verschachtelte PNML-Struktur
+8. **Import/Export** ⏳
+   - Verschachtelte PNML-Struktur (TODO)
    - Referenz-Integrität
 
 ## UI-Mockup
@@ -296,11 +311,63 @@ flowchart TD
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## Token Game Integration (Step Into / Step Out)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant TG as TokenGameStore
+    participant PN as PetriNetStore
+    participant UI as UI
+
+    Note over U,UI: Step Into Subprocess
+    U->>TG: Click enabled Subprocess
+    TG->>TG: Consume input tokens
+    TG->>TG: Push parent state to stack
+    TG->>PN: openSubProcess(id)
+    TG->>TG: Initialize subnet marking (start places)
+    TG->>UI: Show subprocess indicator
+
+    Note over U,UI: Step Out of Subprocess
+    U->>TG: Click "Step Out" button
+    TG->>TG: Check end places have tokens
+    TG->>TG: Pop parent state from stack
+    TG->>PN: navigateTo(parentNetId)
+    TG->>TG: Restore parent marking + output tokens
+    TG->>UI: Hide subprocess indicator
+```
+
+### Implementierte Features
+
+- **Start-Places Erkennung**: Places ohne eingehende Arcs
+- **End-Places Erkennung**: Places ohne ausgehende Arcs
+- **Subprocess Stack**: Ermöglicht verschachtelte Subprocess-Navigation
+- **Enabled-State Highlighting**: Subprocesses werden grün hervorgehoben wenn aktiviert
+- **Deadlock Detection**: Berücksichtigt auch aktivierte Subprocesses
+
+### TokenGameState Erweiterungen
+
+```typescript
+interface SubprocessStackEntry {
+  parentNetId: string
+  subprocessId: string
+  parentMarking: Marking
+  parentHistory: Marking[]
+  parentHistoryIndex: number
+}
+
+interface TokenGameState {
+  // ... existing fields
+  enabledSubprocesses: string[]
+  subprocessStack: SubprocessStackEntry[]
+}
+```
+
 ## Testplan
 
 | Test | Beschreibung |
 |------|--------------|
-| Unit | Store Navigation, Hierarchie |
-| Component | Breadcrumb, SubProcess Node |
-| Integration | Öffnen/Schließen, Token-Fluss |
-| E2E | Komplette Hierarchie erstellen & navigieren |
+| Unit | Store Navigation, Hierarchie, Token Game Step In/Out |
+| Component | Breadcrumb, SubProcess Node, TokenGameControls |
+| Integration | Öffnen/Schließen, Token-Fluss durch Subprocess |
+| E2E | Komplette Hierarchie erstellen, navigieren & Token Game |

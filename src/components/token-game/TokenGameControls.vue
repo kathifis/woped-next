@@ -3,9 +3,11 @@ import { ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useTokenGameStore } from '@/stores/tokenGame'
+import { usePetriNetStore } from '@/stores/petriNet'
 
 const { t } = useI18n()
 const tokenGameStore = useTokenGameStore()
+const petriNetStore = usePetriNetStore()
 const {
   status,
   isRunning,
@@ -17,9 +19,12 @@ const {
   totalSteps,
   isDeadlock,
   enabledTransitions,
+  enabledSubprocesses,
   autoPlayDelay,
   conflictResolution,
   isAnimating,
+  isInSubprocess,
+  subprocessDepth,
 } = storeToRefs(tokenGameStore)
 
 // Local delay value for slider
@@ -64,13 +69,22 @@ const handleStepBackward = () => {
 }
 
 const handleStepForward = () => {
-  if (enabledTransitions.value.length === 1) {
-    tokenGameStore.fireTransition(enabledTransitions.value[0])
-  } else if (enabledTransitions.value.length > 1 && conflictResolution.value !== 'manual') {
-    // Auto-select based on resolution mode
-    const selected = tokenGameStore.selectTransition()
-    if (selected) {
-      tokenGameStore.fireTransition(selected)
+  // If only one transition/subprocess is enabled, fire it
+  if (totalEnabled.value === 1) {
+    if (enabledTransitions.value.length === 1) {
+      tokenGameStore.fireTransition(enabledTransitions.value[0])
+    } else if (enabledSubprocesses.value.length === 1) {
+      tokenGameStore.stepIntoSubprocess(enabledSubprocesses.value[0])
+    }
+  } else if (totalEnabled.value > 1 && conflictResolution.value !== 'manual') {
+    // Auto-select based on resolution mode (includes subprocesses)
+    const selection = tokenGameStore.selectNextAction()
+    if (selection) {
+      if (selection.type === 'transition') {
+        tokenGameStore.fireTransition(selection.id)
+      } else {
+        tokenGameStore.stepIntoSubprocess(selection.id)
+      }
     }
   }
 }
@@ -87,9 +101,24 @@ const handleReset = () => {
   tokenGameStore.reset()
 }
 
+const handleStepOut = () => {
+  tokenGameStore.stepOutOfSubprocess()
+}
+
 const setConflictResolution = (mode) => {
   tokenGameStore.setConflictResolution(mode)
 }
+
+// Check if step out is possible
+const canStepOutComputed = computed(() => tokenGameStore.canStepOut)
+
+// Total enabled (transitions + subprocesses)
+const totalEnabled = computed(() => 
+  enabledTransitions.value.length + enabledSubprocesses.value.length
+)
+
+// Current net name for subprocess indicator
+const currentNetName = computed(() => petriNetStore.net?.name || '')
 
 // Status display
 const statusText = computed(() => {
@@ -156,7 +185,7 @@ const statusClass = computed(() => {
           <button
             v-if="!isPlaying"
             class="control-btn"
-            :disabled="enabledTransitions.length === 0 || isAnimating"
+            :disabled="totalEnabled === 0 || isAnimating"
             @click="handlePlay"
             :title="$t('tokenGame.play')"
           >
@@ -172,7 +201,7 @@ const statusClass = computed(() => {
           </button>
           <button
             class="control-btn small"
-            :disabled="enabledTransitions.length === 0 || isAnimating"
+            :disabled="totalEnabled === 0 || isAnimating"
             @click="handleStepForward"
             :title="$t('tokenGame.step')"
           >
@@ -190,6 +219,23 @@ const statusClass = computed(() => {
       </template>
     </div>
 
+    <!-- Subprocess Indicator -->
+    <div v-if="isRunning && isInSubprocess" class="subprocess-info">
+      <div class="subprocess-badge">
+        <span class="subprocess-icon">📂</span>
+        <span class="subprocess-depth">{{ $t('subprocess.title') }} ({{ subprocessDepth }})</span>
+        <span class="subprocess-name">{{ currentNetName }}</span>
+      </div>
+      <button
+        class="control-btn step-out"
+        :disabled="!canStepOutComputed || isAnimating"
+        @click="handleStepOut"
+        :title="$t('subprocess.goBack')"
+      >
+        ↩ {{ $t('subprocess.goBack') }}
+      </button>
+    </div>
+
     <!-- History Display -->
     <div v-if="isRunning" class="history-info">
       <span>{{ $t('tokenGame.step') }} {{ currentStep }} / {{ totalSteps }}</span>
@@ -202,16 +248,23 @@ const statusClass = computed(() => {
       </button>
     </div>
 
-    <!-- Enabled Transitions -->
-    <div v-if="isRunning && enabledTransitions.length > 0" class="enabled-info">
-      <div class="label">{{ $t('tokenGame.enabled') }} ({{ enabledTransitions.length }}):</div>
+    <!-- Enabled Transitions & Subprocesses -->
+    <div v-if="isRunning && totalEnabled > 0" class="enabled-info">
+      <div class="label">{{ $t('tokenGame.enabled') }} ({{ totalEnabled }}):</div>
       <div class="enabled-list">
         <span
           v-for="id in enabledTransitions"
           :key="id"
-          class="enabled-badge"
+          class="enabled-badge transition"
         >
           {{ id.substring(0, 8) }}...
+        </span>
+        <span
+          v-for="id in enabledSubprocesses"
+          :key="id"
+          class="enabled-badge subprocess"
+        >
+          ⊞ {{ id.substring(0, 6) }}...
         </span>
       </div>
     </div>
@@ -247,9 +300,16 @@ const statusClass = computed(() => {
     </div>
 
     <!-- Deadlock Warning -->
-    <div v-if="isDeadlock" class="deadlock-warning">
+    <div v-if="isDeadlock && !isInSubprocess" class="deadlock-warning">
       <span class="warning-icon">⚠</span>
       <span>{{ $t('tokenGame.deadlockMessage') }}</span>
+    </div>
+
+    <!-- Subprocess Empty/Complete Hint -->
+    <div v-if="isDeadlock && isInSubprocess" class="subprocess-hint">
+      <span class="hint-icon">💡</span>
+      <span v-if="canStepOutComputed">{{ $t('subprocess.canStepOut') }}</span>
+      <span v-else>{{ $t('subprocess.noProgress') }}</span>
     </div>
   </div>
 </template>
@@ -339,13 +399,13 @@ const statusClass = computed(() => {
 }
 
 .control-btn.primary {
-  background: var(--color-primary);
+  background: #22c55e;
   color: white;
-  border-color: var(--color-primary);
+  border-color: #22c55e;
 }
 
 .control-btn.primary:hover {
-  background: var(--color-primary-hover);
+  background: #16a34a;
 }
 
 .control-btn.danger {
@@ -484,5 +544,114 @@ const statusClass = computed(() => {
 
 .warning-icon {
   font-size: 16px;
+}
+
+/* Subprocess Complete/Empty Hint */
+.subprocess-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  color: #1e40af;
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+:global(.dark) .subprocess-hint {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+
+.hint-icon {
+  font-size: 16px;
+}
+
+/* Subprocess Indicator */
+.subprocess-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+:global(.dark) .subprocess-info {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.subprocess-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subprocess-icon {
+  font-size: 14px;
+}
+
+.subprocess-depth {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+:global(.dark) .subprocess-depth {
+  color: #93c5fd;
+}
+
+.subprocess-name {
+  font-size: 11px;
+  color: #3b82f6;
+  font-style: italic;
+}
+
+:global(.dark) .subprocess-name {
+  color: #60a5fa;
+}
+
+.control-btn.step-out {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+  font-size: 11px;
+  padding: 4px 10px;
+}
+
+.control-btn.step-out:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.control-btn.step-out:disabled {
+  background: #93c5fd;
+  border-color: #93c5fd;
+}
+
+/* Enabled badges variants */
+.enabled-badge.transition {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.enabled-badge.subprocess {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+:global(.dark) .enabled-badge.transition {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+:global(.dark) .enabled-badge.subprocess {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
 }
 </style>

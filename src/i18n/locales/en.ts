@@ -195,10 +195,12 @@ export default {
     places: 'Places',
     transitions: 'Transitions',
     operators: 'Operators',
+    subprocesses: 'Subprocesses',
     arcs: 'Arcs',
     tokens: 'Tokens',
     place: 'Place',
     transition: 'Transition',
+    subprocess: 'Subprocess',
     arc: 'Arc',
     capacity: 'Capacity',
     unlimited: '-1 = unlimited',
@@ -217,6 +219,18 @@ export default {
   overview: {
     title: 'Overview',
     minimap: 'Minimap',
+  },
+
+  // Subprocess
+  subprocess: {
+    title: 'Subprocess',
+    goBack: 'Go Back',
+    open: 'Open Subprocess',
+    create: 'Create Subprocess',
+    empty: 'Empty Subprocess',
+    doubleClickHint: 'Double-click to open',
+    canStepOut: 'Subprocess complete - click "Go Back" to return',
+    noProgress: 'No progress possible - add transitions to continue',
   },
 
   // Messages

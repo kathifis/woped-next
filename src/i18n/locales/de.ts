@@ -195,10 +195,12 @@ export default {
     places: 'Stellen',
     transitions: 'Transitionen',
     operators: 'Operatoren',
+    subprocesses: 'Subprozesse',
     arcs: 'Kanten',
     tokens: 'Token',
     place: 'Stelle',
     transition: 'Transition',
+    subprocess: 'Subprozess',
     arc: 'Kante',
     capacity: 'Kapazität',
     unlimited: '-1 = unbegrenzt',
@@ -217,6 +219,18 @@ export default {
   overview: {
     title: 'Übersicht',
     minimap: 'Minimap',
+  },
+
+  // Subprocess
+  subprocess: {
+    title: 'Subprozess',
+    goBack: 'Zurück',
+    open: 'Subprozess öffnen',
+    create: 'Subprozess erstellen',
+    empty: 'Leerer Subprozess',
+    doubleClickHint: 'Doppelklick zum Öffnen',
+    canStepOut: 'Subprozess abgeschlossen - klicke "Zurück" um zurückzukehren',
+    noProgress: 'Kein Fortschritt möglich - füge Transitionen hinzu',
   },
 
   // Messages
