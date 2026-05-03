@@ -24,6 +24,10 @@ graph LR
             FEAT[features.md]
             FEATDOCS[Feature Documents]
         end
+        subgraph learn[learn/]
+            LEARN[README.md]
+            MODULES[8 Learning Modules]
+        end
     end
 ```
 
@@ -77,6 +81,10 @@ graph LR
 ### New Features (`features/`)
 - [Features](features/features.md) - Status & overview of new features
 - [Overview](features/00-features-overview.md) - Guide & template for feature documentation
+
+### Learning Guide (`learn/`)
+- [Learning Guide](learn/README.md) - Examples & exercises for onboarding new contributors
+- Modules: TypeScript, npm & Vite, Vue 3, Pinia, vue-konva, Testing, i18n, Tailwind CSS
 
 ## Quick Start
 
